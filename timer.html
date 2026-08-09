@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Callsign">
+<title>Callsign Timer</title>
+<style>
+  @font-face {
+    font-family: 'SysFont';
+    src: local('San Francisco');
+  }
+
+  :root {
+    --bg: #0a0e14;
+    --panel: #10161f;
+    --amber: #ffb020;
+    --amber-dim: #7a5518;
+    --green: #3ddc84;
+    --red: #ff4d4f;
+    --text: #d7dde5;
+    --text-dim: #5c6b7a;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'SF Pro Display', 'Segoe UI', sans-serif;
+    overflow: hidden;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px 6px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  .status-bar .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    display: inline-block;
+    margin-right: 6px;
+  }
+
+  .status-bar .dot.live {
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+  }
+
+  .header {
+    padding: 4px 24px 18px;
+    border-bottom: 1px solid #1a2230;
+  }
+
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .header p {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    letter-spacing: 0.5px;
+  }
+
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+  }
+
+  .ring {
+    position: relative;
+    width: 268px;
+    height: 268px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ring svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: rotate(-90deg);
+  }
+
+  .ring circle {
+    fill: none;
+    stroke-width: 5;
+  }
+
+  .ring .track {
+    stroke: #1a2230;
+  }
+
+  .ring .progress {
+    stroke: var(--amber);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.3s linear, stroke 0.3s ease;
+  }
+
+  .ring.running .progress {
+    stroke: var(--green);
+  }
+
+  .ring.alert .progress {
+    stroke: var(--red);
+  }
+
+  .time-display {
+    font-variant-numeric: tabular-nums;
+    font-size: 58px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .phase-label {
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .rep-track {
+    display: flex;
+    gap: 6px;
+    margin-top: 22px;
+  }
+
+  .rep-track span {
+    width: 22px;
+    height: 4px;
+    border-radius: 2px;
+    background: #1a2230;
+    transition: background 0.25s ease;
+  }
+
+  .rep-track span.done {
+    background: var(--amber);
+  }
+
+  .controls {
+    display: flex;
+    gap: 14px;
+    padding: 26px 24px calc(30px + env(safe-area-inset-bottom));
+  }
+
+  .btn {
+    flex: 1;
+    padding: 17px 0;
+    border-radius: 14px;
+    border: none;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid #1e2836;
+  }
+
+  .btn:active {
+    opacity: 0.7;
+  }
+
+  .btn.primary {
+    background: var(--amber);
+    color: #1a1200;
+    border: none;
+  }
+
+  .btn.primary.stop {
+    background: var(--red);
+    color: #2a0000;
+  }
+
+  .presets {
+    display: flex;
+    gap: 8px;
+    padding: 0 24px 10px;
+    justify-content: center;
+  }
+
+  .preset {
+    padding: 8px 14px;
+    border-radius: 20px;
+    background: var(--panel);
+    border: 1px solid #1e2836;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+
+  .preset.active {
+    color: var(--amber);
+    border-color: var(--amber-dim);
+  }
+</style>
+</head>
+<body>
+
+<div class="status-bar">
+  <span><span class="dot" id="liveDot"></span>SYSTEM BEREIT</span>
+  <span id="clock">00:00</span>
+</div>
+
+<div class="header">
+  <h1>Callsign Timer</h1>
+  <p>Intervalltraining fuer Konzentration und Reaktion</p>
+</div>
+
+<div class="main">
+  <div class="ring" id="ring">
+    <svg width="268" height="268">
+      <circle class="track" cx="134" cy="134" r="120"></circle>
+      <circle class="progress" id="progressCircle" cx="134" cy="134" r="120"></circle>
+    </svg>
+    <div style="text-align:center;">
+      <div class="time-display" id="timeDisplay">00:30</div>
+      <div class="phase-label" id="phaseLabel">Bereit</div>
+    </div>
+  </div>
+  <div class="rep-track" id="repTrack"></div>
+</div>
+
+<div class="presets" id="presets">
+  <div class="preset active" data-work="30" data-rest="10" data-reps="6">30 / 10 x6</div>
+  <div class="preset" data-work="45" data-rest="15" data-reps="8">45 / 15 x8</div>
+  <div class="preset" data-work="20" data-rest="10" data-reps="10">20 / 10 x10</div>
+</div>
+
+<div class="controls">
+  <button class="btn" id="resetBtn">Reset</button>
+  <button class="btn primary" id="startBtn">Start</button>
+</div>
+
+<script>
+  const timeDisplay = document.getElementById('timeDisplay');
+  const phaseLabel = document.getElementById('phaseLabel');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const ring = document.getElementById('ring');
+  const progressCircle = document.getElementById('progressCircle');
+  const repTrack = document.getElementById('repTrack');
+  const clock = document.getElementById('clock');
+  const liveDot = document.getElementById('liveDot');
+  const presetEls = document.querySelectorAll('.preset');
+
+  const CIRC = 2 * Math.PI * 120;
+  progressCircle.style.strokeDasharray = CIRC;
+  progressCircle.style.strokeDashoffset = 0;
+
+  let workTime = 30;
+  let restTime = 10;
+  let totalReps = 6;
+
+  let currentRep = 0;
+  let phase = 'idle';
+  let secondsLeft = workTime;
+  let running = false;
+  let tickHandle = null;
+
+  function buildReps() {
+    repTrack.innerHTML = '';
+    for (let i = 0; i < totalReps; i++) {
+      const s = document.createElement('span');
+      repTrack.appendChild(s);
+    }
+  }
+  buildReps();
+
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    clock.textContent = h + ':' + m;
+  }
+  updateClock();
+  setInterval(updateClock, 15000);
+
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+  }
+
+  function setProgress(fraction) {
+    const offset = CIRC * (1 - fraction);
+    progressCircle.style.strokeDashoffset = offset;
+  }
+
+  function markRepsDone() {
+    const spans = repTrack.querySelectorAll('span');
+    spans.forEach((s, idx) => {
+      if (idx < currentRep) s.classList.add('done');
+      else s.classList.remove('done');
+    });
+  }
+
+  function resetState() {
+    stopTimer();
+    currentRep = 0;
+    phase = 'idle';
+    secondsLeft = workTime;
+    timeDisplay.textContent = formatTime(workTime);
+    phaseLabel.textContent = 'Bereit';
+    ring.classList.remove('running', 'alert');
+    setProgress(0);
+    markRepsDone();
+    startBtn.textContent = 'Start';
+    startBtn.classList.remove('stop');
+    liveDot.classList.remove('live');
+  }
+
+  function stopTimer() {
+    running = false;
+    if (tickHandle) clearInterval(tickHandle);
+    tickHandle = null;
+  }
+
+  function vibrate(pattern) {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  }
+
+  function tick() {
+    secondsLeft -= 1;
+
+    const total = phase === 'work' ? workTime : restTime;
+    setProgress(1 - secondsLeft / total);
+
+    if (secondsLeft <= 3 && secondsLeft > 0) {
+      ring.classList.add('alert');
+    } else {
+      ring.classList.remove('alert');
+    }
+
+    if (secondsLeft <= 0) {
+      if (phase === 'work') {
+        currentRep += 1;
+        markRepsDone();
+        if (currentRep >= totalReps) {
+          finish();
+          return;
+        }
+        phase = 'rest';
+        secondsLeft = restTime;
+        phaseLabel.textContent = 'Pause';
+        vibrate([80]);
+      } else {
+        phase = 'work';
+        secondsLeft = workTime;
+        phaseLabel.textContent = 'Aktiv';
+        vibrate([150, 60, 150]);
+      }
+      setProgress(0);
+      ring.classList.remove('alert');
+    }
+
+    timeDisplay.textContent = formatTime(secondsLeft);
+  }
+
+  function finish() {
+    stopTimer();
+    phase = 'idle';
+    phaseLabel.textContent = 'Fertig';
+    timeDisplay.textContent = 'FERTIG';
+    ring.classList.remove('running', 'alert');
+    setProgress(1);
+    startBtn.textContent = 'Neu starten';
+    startBtn.classList.remove('stop');
+    liveDot.classList.remove('live');
+    vibrate([100, 50, 100, 50, 200]);
+  }
+
+  function startTimer() {
+    if (phase === 'idle' || phase === undefined) {
+      phase = 'work';
+      secondsLeft = workTime;
+      currentRep = 0;
+      markRepsDone();
+    }
+    running = true;
+    ring.classList.add('running');
+    liveDot.classList.add('live');
+    phaseLabel.textContent = phase === 'work' ? 'Aktiv' : 'Pause';
+    startBtn.textContent = 'Stop';
+    startBtn.classList.add('stop');
+    tickHandle = setInterval(tick, 1000);
+  }
+
+  function pauseTimer() {
+    stopTimer();
+    ring.classList.remove('running');
+    liveDot.classList.remove('live');
+    startBtn.textContent = 'Fortsetzen';
+    startBtn.classList.remove('stop');
+  }
+
+  startBtn.addEventListener('click', () => {
+    if (running) {
+      pauseTimer();
+    } else if (phaseLabel.textContent === 'Fertig') {
+      resetState();
+    } else {
+      startTimer();
+    }
+  });
+
+  resetBtn.addEventListener('click', resetState);
+
+  presetEls.forEach(el => {
+    el.addEventListener('click', () => {
+      if (running) return;
+      presetEls.forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      workTime = parseInt(el.dataset.work, 10);
+      restTime = parseInt(el.dataset.rest, 10);
+      totalReps = parseInt(el.dataset.reps, 10);
+      buildReps();
+      resetState();
+    });
+  });
+
+  resetState();
+</script>
+
+</body>
+</html>
