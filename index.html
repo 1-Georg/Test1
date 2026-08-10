@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Memory Ops">
+<meta name="theme-color" content="#0a0e14">
+<title>Memory Ops</title>
+<style>
+:root{
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI Variable Text','Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+  --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,'Roboto Mono',monospace;
+  --bg:#0a0e14; --panel:#111823; --panel2:#16202d; --line:#1e2b3a;
+  --amber:#ffb020; --amber-dim:#6b4a13; --cyan:#4fd6e0; --green:#3ddc84;
+  --red:#ff5c5c; --text:#dbe3ec; --dim:#6b7d92;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:radial-gradient(1200px 600px at 50% -10%, #13202e 0%, transparent 60%), var(--bg);
+  color:var(--text); font-family:var(--sans);
+  overflow:hidden; display:flex; flex-direction:column;
+  padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
+  user-select:none;
+}
+.mono{font-family:var(--mono)}
+
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 16px 10px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.brand{font-size:13px;letter-spacing:3px;color:var(--dim);font-weight:600}
+.brand b{color:var(--amber)}
+.spacer{flex:1}
+.slot{display:flex;align-items:center;gap:7px;border:1px solid var(--amber-dim);border-radius:6px;padding:4px 9px;background:rgba(255,176,32,.06)}
+.slot .lbl{font-size:9px;letter-spacing:2px;color:var(--amber);opacity:.75}
+.slot .box{width:17px;height:21px;border-radius:3px;background:repeating-linear-gradient(135deg,#3a2a08 0 3px,#22190a 3px 6px);box-shadow:inset 0 0 6px rgba(0,0,0,.7);display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;color:rgba(255,176,32,.75)}
+.iconbtn{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:7px 12px;font-family:inherit;font-size:13px;letter-spacing:1px;font-weight:600;cursor:pointer}
+.iconbtn:active{background:var(--panel2)}
+.progress{height:3px;background:#121a25;flex:0 0 auto}
+.progress span{display:block;height:100%;background:var(--amber);width:0;transition:width .35s ease}
+
+.view{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 16px 26px;-webkit-overflow-scrolling:touch}
+.wrap{max-width:520px;margin:0 auto;width:100%}
+h1{font-size:30px;font-weight:700;letter-spacing:1px;line-height:1.1}
+h2{font-size:19px;font-weight:600;letter-spacing:.5px;margin-bottom:4px}
+.sub{color:var(--dim);font-size:14px;line-height:1.55}
+.eyebrow{font-size:10px;letter-spacing:3px;color:var(--amber);font-weight:700;margin-bottom:6px}
+.card{background:linear-gradient(180deg,var(--panel) 0%,#0e151f 100%);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.chip{flex:1 1 0;min-width:74px;text-align:center;cursor:pointer;border:1px solid var(--line);background:#0d141d;color:var(--dim);border-radius:10px;padding:11px 6px;font-family:inherit;font-size:14px;font-weight:600}
+.chip.on{border-color:var(--amber);color:var(--amber);background:rgba(255,176,32,.09)}
+.row.stack{flex-direction:column}
+.row.stack .chip{width:100%;flex:none;text-align:left;padding-left:16px}
+.chip small{display:block;font-size:10px;letter-spacing:1px;opacity:.7;font-weight:400;margin-top:2px}
+.opt{font-size:11px;letter-spacing:2px;color:var(--dim);margin-bottom:2px;text-transform:uppercase}
+.btn{width:100%;border:none;border-radius:12px;padding:16px;margin-top:16px;font-family:inherit;font-size:17px;font-weight:700;letter-spacing:2px;background:var(--amber);color:#141005;cursor:pointer}
+.btn:active{filter:brightness(.9)}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+
+.letterstage{text-align:center;padding:26px 0 6px}
+.bigletter{font-size:112px;line-height:1;font-weight:700;color:var(--amber);text-shadow:0 0 46px rgba(255,176,32,.45);letter-spacing:4px;animation:pop .35s ease}
+@keyframes pop{from{transform:scale(.82);opacity:0}to{transform:scale(1);opacity:1}}
+.nato{margin-top:8px;font-size:15px;letter-spacing:7px;color:var(--dim);font-weight:600}
+.hold{margin-top:20px;font-size:14px;color:var(--dim);line-height:1.5}
+.countdown{margin-top:18px;font-size:13px;letter-spacing:3px;color:var(--amber)}
+.warn{border-color:var(--red);background:rgba(255,92,92,.07)}
+.warn .bigletter{color:var(--red);text-shadow:0 0 46px rgba(255,92,92,.35)}
+.warn .eyebrow{color:var(--red)}
+
+.qhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.tag{font-size:10px;letter-spacing:2px;color:var(--cyan);font-weight:700}
+.tclock{font-size:13px;color:var(--dim)}
+.question{font-size:20px;line-height:1.45;font-weight:600}
+.tbar{height:4px;background:#121a25;border-radius:2px;margin-top:14px;overflow:hidden}
+.tbar span{display:block;height:100%;background:var(--cyan);width:100%}
+.tbar.low span{background:var(--red)}
+.answer{display:flex;gap:8px;margin-top:16px}
+.answer input{flex:1;background:#0b1119;border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:22px;padding:13px 14px;text-align:center;letter-spacing:2px;outline:none;min-width:0}
+.answer input:focus{border-color:var(--amber)}
+.answer button{border:none;border-radius:10px;background:var(--amber);color:#141005;font-family:inherit;font-weight:700;font-size:15px;padding:0 20px;letter-spacing:1px;cursor:pointer}
+.unit{text-align:center;color:var(--dim);font-size:12px;margin-top:8px;letter-spacing:1px}
+
+.rose{fill:none;stroke:#26384a;stroke-width:1}
+.tick{stroke:#3b5266}
+.tickmaj{stroke:#7d97ad}
+.roselbl{fill:#7d97ad;font-family:var(--mono);font-size:9px;text-anchor:middle}
+.needle{stroke:var(--amber);stroke-width:3;stroke-linecap:round}
+.compass{display:block;margin:14px auto 2px}
+.panel{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:300px;margin:16px auto 4px}
+.gauge{width:100%;display:block}
+.gname{text-align:center;font-size:9px;letter-spacing:2px;color:var(--dim);margin-top:3px}
+.dial{fill:#080d13;stroke:#2b3d50;stroke-width:1.5}
+.dlbl{fill:#9fb3c6;font-family:var(--mono);font-size:8px;text-anchor:middle;dominant-baseline:middle}
+
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:14px}
+.grid button{aspect-ratio:1/1;border:1px solid var(--line);background:#0d141d;color:var(--text);border-radius:9px;font-family:var(--mono);font-size:17px;font-weight:700;cursor:pointer}
+.grid button:active{background:var(--amber);color:#141005}
+
+.steuerfeld{position:relative;height:44vh;min-height:230px;max-height:380px;margin-top:14px;border:1px solid var(--line);border-radius:12px;background:#0b1119;overflow:hidden;touch-action:none}
+.gitter{position:absolute;background:#16202d}
+.ziel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:2px dashed #33506b;border-radius:50%}
+.punkt{position:absolute;left:50%;top:50%;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:var(--amber);box-shadow:0 0 18px rgba(255,176,32,.55)}
+.punkt.drin{background:var(--green);box-shadow:0 0 18px rgba(61,220,132,.6)}
+.konf{font-size:14px;line-height:1.6;color:var(--text);margin-top:6px}
+.konf b{color:var(--amber);font-weight:700}
+.ueber{position:fixed;inset:0;pointer-events:none;z-index:40}
+.nk{position:fixed;box-shadow:0 6px 22px rgba(0,0,0,.65)}
+.feld{position:relative;height:46vh;min-height:230px;max-height:380px;margin-top:14px;border:1px solid var(--line);border-radius:12px;background:#0b1119;overflow:hidden;touch-action:manipulation}
+.kreis{position:absolute;border:none;border-radius:50%;padding:0;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;box-shadow:0 4px 18px rgba(0,0,0,.55);animation:pop .12s ease}
+.scheibe{width:120px;height:120px;border-radius:50%;margin:6px auto 0;box-shadow:0 0 46px rgba(0,0,0,.5)}
+.farbwahl{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}
+.farbwahl button{aspect-ratio:1/1;border:none;border-radius:50%;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.5)}
+.zaehler{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--dim);margin-top:10px}
+.frow{display:flex;align-items:center;gap:10px;margin-top:10px}
+.frow label{width:64px;font-size:11px;letter-spacing:2px;color:var(--amber);font-weight:700}
+.frow input{flex:1;min-width:0;background:#0b1119;border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:20px;padding:12px 10px;text-align:center;letter-spacing:2px;outline:none}
+.frow input:focus{border-color:var(--amber)}
+.frow span{width:58px;font-size:11px;color:var(--dim)}
+.fb{margin-top:16px;border-radius:12px;padding:14px 15px;font-size:15px;line-height:1.5;border:1px solid;animation:pop .2s ease}
+.fb.ok{border-color:var(--green);background:rgba(61,220,132,.08)}
+.fb.no{border-color:var(--red);background:rgba(255,92,92,.08)}
+.fb .verdict{font-weight:700;letter-spacing:.5px}
+.fb.ok .verdict{color:var(--green)}
+.fb.no .verdict{color:var(--red)}
+.fb .sol{margin-top:6px;font-family:var(--mono);font-size:17px;font-weight:700;color:var(--text)}
+.weg{list-style:none;margin-top:12px;border-left:2px solid var(--line);padding-left:12px}
+.weg li{font-family:var(--mono);font-size:13px;line-height:1.75;color:var(--dim)}
+.weg li b{color:var(--text);font-weight:700}
+.tip{margin-top:10px;font-size:13px;color:var(--dim);line-height:1.5}
+
+.stat{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.stat:last-child{border-bottom:none}
+.stat .k{color:var(--dim);font-size:14px}
+.stat .v{font-family:var(--mono);font-size:16px;font-weight:700}
+.bar{height:6px;background:#121a25;border-radius:3px;margin-top:6px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--amber)}
+.score{text-align:center;padding:8px 0 4px}
+.score .num{font-size:64px;font-weight:700;color:var(--amber);line-height:1}
+.score .lbl{font-size:11px;letter-spacing:3px;color:var(--dim);margin-top:4px}
+
+.modal{position:fixed;inset:0;background:rgba(4,7,11,.82);display:flex;align-items:center;justify-content:center;padding:24px;z-index:50}
+.modal .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;max-width:340px;width:100%}
+.hidden{display:none}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><b>MEMORY</b> OPS</div>
+  <div class="spacer"></div>
+  <button class="iconbtn hidden" id="menuBtn">MENÜ</button>
+</div>
+<div class="progress"><span id="prog"></span></div>
+<div class="view"><div class="wrap" id="view"></div></div>
+<div id="over" class="ueber"></div>
+
+<div class="modal hidden" id="modal">
+  <div class="box">
+    <h2>Lauf abbrechen</h2>
+    <p class="sub">Der aktuelle Lauf wird verworfen und die Ergebnisse gehen verloren.</p>
+    <button class="btn" id="mYes">ABBRECHEN UND ZURÜCK</button>
+    <button class="btn ghost" id="mNo">WEITER TRAINIEREN</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const view=document.getElementById('view'), slot={classList:{add(){},remove(){}}},
+      menuBtn=document.getElementById('menuBtn'), prog=document.getElementById('prog'),
+      modal=document.getElementById('modal');
+
+const NATO={A:'ALFA',B:'BRAVO',C:'CHARLIE',D:'DELTA',E:'ECHO',F:'FOXTROT',G:'GOLF',H:'HOTEL',
+I:'INDIA',J:'JULIETT',K:'KILO',L:'LIMA',M:'MIKE',N:'NOVEMBER',O:'OSCAR',P:'PAPA',Q:'QUEBEC',
+R:'ROMEO',S:'SIERRA',T:'TANGO',U:'UNIFORM',V:'VICTOR',W:'WHISKEY',X:'XRAY',Y:'YANKEE',Z:'ZULU'};
+const AZ=Object.keys(NATO);
+
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const pad3=n=>String(n).padStart(3,'0');
+const norm=h=>{h=((h%360)+360)%360;return h===0?360:h;};
+let uid=0;
+
+let CFG={bloecke:8, dichte:'normal', zeit:30, stufe:'mittel', ton:true,
+         typen:{dreisatz:true, nav:true, flug:true, instr:true, reihe:false, englisch:true, reaktion:true, steuern:true},
+         merk:{buchstabe:true, instrument:true, farbe:true}, ablese:true, doppel:false};
+let S=null, tickId=null, keyMode=null, contFn=null, toIds=[];
+function later(fn,ms){ const id=setTimeout(fn,ms); toIds.push(id); return id; }
+
+function clearTimers(){
+  if(tickId){clearInterval(tickId);tickId=null;}
+  toIds.forEach(clearTimeout); toIds=[];
+  const o=document.getElementById('over'); if(o) o.innerHTML='';
+}
+function beep(f,d){
+  if(!CFG.ton) return;
+  try{
+    const C=window.AudioContext||window.webkitAudioContext; if(!C) return;
+    const ctx=beep.ctx||(beep.ctx=new C());
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.value=f; g.gain.value=.06;
+    o.connect(g); g.connect(ctx.destination); o.start();
+    g.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime+d/1000);
+    o.stop(ctx.currentTime+d/1000);
+  }catch(e){}
+}
+function buzz(m){ if(navigator.vibrate) try{navigator.vibrate(m);}catch(e){} }
+function med(a){ if(!a||!a.length) return 0; const b=a.slice().sort((x,y)=>x-y), i=Math.floor(b.length/2);
+  return b.length%2?b[i]:Math.round((b[i-1]+b[i])/2); }
+const LS='memops_verlauf_v1';
+let SPEICHER_OK=true;
+try{ localStorage.setItem(LS+'_t','1'); localStorage.removeItem(LS+'_t'); }catch(e){ SPEICHER_OK=false; }
+function ladeVerlauf(){ try{ const r=localStorage.getItem(LS); return r?JSON.parse(r):[]; }catch(e){ return []; } }
+function speichereLauf(l){ try{ const v=ladeVerlauf(); v.push(l); while(v.length>60) v.shift();
+  localStorage.setItem(LS,JSON.stringify(v)); }catch(e){} }
+function loescheVerlauf(){ try{ localStorage.removeItem(LS); }catch(e){} }
+function datum(t){ const d=new Date(t);
+  return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+
+/* =========================================================
+   1  DREISATZ
+   ========================================================= */
+function genDreisatz(){
+  const anti=(CFG.stufe==='schwer'&&Math.random()<.4)||(CFG.stufe==='mittel'&&Math.random()<.28);
+  if(anti){
+    const w=rnd(2,8); let c=rnd(2,9); while(c===w) c=rnd(2,9);
+    const q=CFG.stufe==='schwer'?rnd(3,14):rnd(2,8);
+    const t=c*q, ans=w*q;
+    const T=pick([
+      {f:`${w} Techniker warten eine Anlage in ${t} Stunden. Wie lange brauchen ${c} Techniker?`,u:'Stunden'},
+      {f:`${w} Pumpen füllen den Tank in ${t} Minuten. Wie lange brauchen ${c} Pumpen?`,u:'Minuten'},
+      {f:`${w} Generatoren decken den Bedarf ${t} Tage lang. Wie lange reichen ${c} Generatoren?`,u:'Tage'}
+    ]);
+    return {art:'dreisatz',frage:T.f,einheit:T.u,typ:'zahl',loesung:ans,
+      weg:[`<b>1</b>  Gesamtaufwand: ${w} × ${t} = ${w*t}`,
+           `<b>2</b>  Auf ${c} verteilt: ${w*t} ÷ ${c} = <b>${ans}</b>`],
+      hinweis:'Umgekehrt proportional. Das Produkt aus Menge und Zeit bleibt konstant.'};
+  }
+  const u=CFG.stufe==='leicht'?rnd(2,12):CFG.stufe==='mittel'?rnd(4,35):rnd(6,85);
+  const a=rnd(2,9); let c=rnd(2,15); while(c===a) c=rnd(2,15);
+  const b=a*u, ans=c*u;
+  const T=pick([
+    {f:`${a} Solarmodule liefern ${b} Watt. Wie viel liefern ${c} Module?`,u:'Watt'},
+    {f:`${a} Liter Kraftstoff reichen für ${b} Kilometer. Wie weit reichen ${c} Liter?`,u:'Kilometer'},
+    {f:`${a} Werkzeugsätze kosten ${b} Euro. Was kosten ${c} Sätze?`,u:'Euro'},
+    {f:`In ${a} Minuten legt der Hubschrauber ${b} Kilometer zurück. Wie weit in ${c} Minuten?`,u:'Kilometer'},
+    {f:`${a} Akkuzellen speichern ${b} Wattstunden. Wie viel speichern ${c} Zellen?`,u:'Wattstunden'},
+    {f:`${a} Rotorblätter wiegen ${b} Kilogramm. Wie viel wiegen ${c} Blätter?`,u:'Kilogramm'}
+  ]);
+  return {art:'dreisatz',frage:T.f,einheit:T.u,typ:'zahl',loesung:ans,
+    weg:[`<b>1</b>  Je Einheit: ${b} ÷ ${a} = ${u}`,
+         `<b>2</b>  Für ${c} Einheiten: ${u} × ${c} = <b>${ans}</b>`],
+    hinweis:'Zuerst auf eine Einheit herunterrechnen, anschließend hochrechnen.'};
+}
+
+/* =========================================================
+   2  NAVIGATION
+   ========================================================= */
+function randHdg(){
+  if(CFG.stufe==='leicht') return norm(rnd(1,36)*10);
+  if(CFG.stufe==='mittel') return norm(rnd(1,72)*5);
+  return norm(rnd(1,360));
+}
+function kursWeg(raw){
+  const n=norm(raw);
+  if(raw>360) return `<b>+</b>  Über 360 hinaus: ${raw} minus 360 = <b>${pad3(n)}</b>`;
+  if(raw<1)   return `<b>+</b>  Unter 001: ${raw} plus 360 = <b>${pad3(n)}</b>`;
+  return null;
+}
+function drehWeg(h,t,ans){
+  const m=((t-h)%360+360)%360;
+  return [`<b>1</b>  Rechtsherum von ${pad3(h)} nach ${pad3(t)}: ${m} Grad`,
+          `<b>2</b>  Linksherum: 360 minus ${m} = ${360-m} Grad`,
+          `<b>3</b>  Kürzere Seite: <b>${ans}</b>`];
+}
+function genNav(){
+  const art=pick(CFG.stufe==='leicht'?['turn','rezi','radial']:['turn','rezi','radial','delta','side','rel']);
+  const h=randHdg();
+  if(art==='turn'){
+    const grad=CFG.stufe==='leicht'?rnd(1,17)*10:rnd(1,35)*5;
+    const rechts=Math.random()<.5, raw=h+(rechts?grad:-grad), ans=norm(raw);
+    const base=`<b>1</b>  ${pad3(h)} ${rechts?'plus':'minus'} ${grad}`, w2=kursWeg(raw);
+    return {art:'nav',frage:`Anfangskurs ${pad3(h)}. Drehung um ${grad} Grad nach ${rechts?'rechts':'links'}. Wie lautet der neue Kurs?`,
+      einheit:'Grad',typ:'zahl',kurs:true,grafik:compass(h),loesungsGrafik:compass(h,ans),loesung:ans,
+      weg:w2?[`${base} = ${raw}`,w2]:[`${base} = <b>${pad3(ans)}</b>`],
+      hinweis:'Rechtsdrehung addieren, Linksdrehung abziehen.'};
+  }
+  if(art==='rezi'||art==='radial'){
+    const raw=h+180, ans=norm(raw), rezi=art==='rezi';
+    const base=`<b>1</b>  ${pad3(h)} plus 180`, w2=kursWeg(raw);
+    return {art:'nav',
+      frage: rezi?`Wie lautet der Gegenkurs zu Kurs ${pad3(h)}?`
+                 :`Position auf Radial ${pad3(h)} eines Funkfeuers. Welcher Kurs führt direkt zur Station?`,
+      einheit:'Grad',typ:'zahl',kurs:true,grafik:compass(h),loesungsGrafik:compass(h,ans),loesung:ans,
+      weg:w2?[`${base} = ${raw}`,w2]:[`${base} = <b>${pad3(ans)}</b>`],
+      hinweis: rezi?'Bei Werten über 180 werden 180 abgezogen statt addiert.'
+                   :'Das Radial zeigt von der Station weg, zur Station führt der Gegenkurs.'};
+  }
+  if(art==='delta'){
+    let t=randHdg(), d=((t-h+540)%360)-180;
+    while(Math.abs(d)<10||Math.abs(d)===180){ t=randHdg(); d=((t-h+540)%360)-180; }
+    return {art:'nav',frage:`Von Kurs ${pad3(h)} auf Kurs ${pad3(t)}. Wie viel Grad beträgt die kürzeste Drehung?`,
+      einheit:'Grad',typ:'zahl',grafik:compass(h,t),loesungsGrafik:compass(h,t),loesung:Math.abs(d),
+      weg:drehWeg(h,t,Math.abs(d)+' Grad nach '+(d>0?'rechts':'links')),
+      hinweis:'Beide Drehrichtungen vergleichen, gedreht wird über die kleinere.'};
+  }
+  if(art==='side'){
+    let t=randHdg(), d=((t-h+540)%360)-180;
+    while(Math.abs(d)<15||Math.abs(d)===180){ t=randHdg(); d=((t-h+540)%360)-180; }
+    return {art:'nav',frage:`Eigenkurs ${pad3(h)}, Zielkurs ${pad3(t)}. In welche Richtung ist die Drehung kürzer?`,
+      typ:'wahl',optionen:['LINKS','RECHTS'],grafik:compass(h,t),loesungsGrafik:compass(h,t),loesung:d>0?'RECHTS':'LINKS',
+      weg:drehWeg(h,t,(d>0?'RECHTS':'LINKS')+' mit '+Math.abs(d)+' Grad'),
+      hinweis:'Liegt der Zielkurs innerhalb der nächsten 180 Grad im Uhrzeigersinn, wird rechts gedreht.'};
+  }
+  const rb=CFG.stufe==='leicht'?rnd(1,17)*10:rnd(1,35)*5, rechts=Math.random()<.5;
+  const raw=h+(rechts?rb:-rb), ans=norm(raw);
+  const base=`<b>1</b>  Kurs ${pad3(h)} ${rechts?'plus':'minus'} ${rb}`, w2=kursWeg(raw);
+  return {art:'nav',frage:`Eigenkurs ${pad3(h)}. Kontakt in relativer Peilung ${rb} Grad ${rechts?'steuerbord':'backbord'}. Wie lautet die rechtweisende Peilung?`,
+    einheit:'Grad',typ:'zahl',kurs:true,grafik:compass(h),loesungsGrafik:compass(h,ans),loesung:ans,
+    weg:w2?[`${base} = ${raw}`,w2]:[`${base} = <b>${pad3(ans)}</b>`],
+    hinweis:'Steuerbord ist rechts und wird addiert, backbord ist links und wird abgezogen.'};
+}
+
+/* =========================================================
+   3  FLUGRECHNEN
+   ========================================================= */
+function hhmm(min){ min=((min%1440)+1440)%1440; return String(Math.floor(min/60)).padStart(2,'0')+String(min%60).padStart(2,'0'); }
+function genFlug(){
+  const gsPool=[120,180,240,300,360], art=pick(['zeit','strecke','sprit','sink','glide','regel60','reserve','uhr','reichweite']);
+
+  if(art==='zeit'){
+    const gs=pick(gsPool), nmMin=gs/60, min=rnd(4,40), dist=nmMin*min;
+    return {art:'flug',frage:`Grundgeschwindigkeit ${gs} Knoten. Wie viele Minuten benötigt die Strecke von ${dist} nautischen Meilen?`,
+      einheit:'Minuten',typ:'zahl',loesung:min,
+      weg:[`<b>1</b>  ${gs} ÷ 60 = ${nmMin} Meilen pro Minute`,
+           `<b>2</b>  ${dist} ÷ ${nmMin} = <b>${min}</b> Minuten`],
+      hinweis:'Knoten geteilt durch 60 ergibt nautische Meilen pro Minute.'};
+  }
+  if(art==='strecke'){
+    const gs=pick(gsPool), nmMin=gs/60, min=rnd(5,45);
+    return {art:'flug',frage:`Flugzeit ${min} Minuten bei ${gs} Knoten Grundgeschwindigkeit. Welche Strecke wird zurückgelegt?`,
+      einheit:'nautische Meilen',typ:'zahl',loesung:nmMin*min,
+      weg:[`<b>1</b>  ${gs} ÷ 60 = ${nmMin} Meilen pro Minute`,
+           `<b>2</b>  ${nmMin} × ${min} = <b>${nmMin*min}</b> Meilen`],
+      hinweis:'Strecke ist Geschwindigkeit mal Zeit, hier in Minuten gerechnet.'};
+  }
+  if(art==='sprit'){
+    const proMin=rnd(3,12), proStd=proMin*60, min=pick([10,15,20,25,30,40,45,50,75,90]);
+    return {art:'flug',frage:`Verbrauch ${proStd} Liter pro Stunde. Wie viel Kraftstoff erfordern ${min} Minuten Flugzeit?`,
+      einheit:'Liter',typ:'zahl',loesung:proMin*min,
+      weg:[`<b>1</b>  ${proStd} ÷ 60 = ${proMin} Liter pro Minute`,
+           `<b>2</b>  ${proMin} × ${min} = <b>${proMin*min}</b> Liter`],
+      hinweis:'Verbrauch zuerst auf die Minute herunterbrechen.'};
+  }
+  if(art==='reichweite'){
+    const proStd=rnd(2,9)*50, std=rnd(2,5), tank=proStd*std;
+    return {art:'flug',frage:`Tankinhalt ${tank} Liter bei ${proStd} Litern Verbrauch pro Stunde. Wie viele Minuten Flugzeit stehen zur Verfügung?`,
+      einheit:'Minuten',typ:'zahl',loesung:std*60,
+      weg:[`<b>1</b>  ${tank} ÷ ${proStd} = ${std} Stunden`,
+           `<b>2</b>  ${std} × 60 = <b>${std*60}</b> Minuten`],
+      hinweis:'Das Ergebnis ist in Minuten anzugeben.'};
+  }
+  if(art==='sink'){
+    const rate=pick([300,400,500,600,800,1000]), min=rnd(3,15), hoehe=rate*min;
+    return {art:'flug',frage:`Sinkflug von ${hoehe} Fuß auf Meereshöhe mit ${rate} Fuß pro Minute. Wie lange dauert der Sinkflug?`,
+      einheit:'Minuten',typ:'zahl',loesung:min,
+      weg:[`<b>1</b>  ${hoehe} ÷ ${rate} = <b>${min}</b> Minuten`],
+      hinweis:'Höhendifferenz durch Sinkrate ergibt die Zeit.'};
+  }
+  if(art==='glide'){
+    const gs=pick([90,100,120,140,150,180]);
+    return {art:'flug',frage:`Faustformel für den Dreigradanflug: Grundgeschwindigkeit halbieren und mit zehn multiplizieren. Welche Sinkrate ergibt sich bei ${gs} Knoten?`,
+      einheit:'Fuß pro Minute',typ:'zahl',loesung:gs/2*10,
+      weg:[`<b>1</b>  ${gs} ÷ 2 = ${gs/2}`,`<b>2</b>  ${gs/2} × 10 = <b>${gs/2*10}</b> Fuß pro Minute`],
+      hinweis:'Die Faustformel ergibt einen Anflugwinkel von etwa drei Grad.'};
+  }
+  if(art==='regel60'){
+    const paare=[[60,1],[60,2],[60,3],[60,4],[60,5],[60,6],[60,8],[30,2],[30,4],[30,6],[30,8],[20,3],[20,6],[20,9],[15,4],[15,8],[12,5],[10,6],[10,12]];
+    const [dist,grad]=pick(paare), ab=dist*grad/60;
+    return {art:'flug',frage:`Sechzigerregel: nach ${dist} Meilen beträgt der Versatz zum Sollkurs ${ab} ${ab===1?'Meile':'Meilen'}. Wie groß ist die Kursabweichung?`,
+      einheit:'Grad',typ:'zahl',loesung:grad,
+      weg:[`<b>1</b>  Abweichung mal 60: ${ab} × 60 = ${ab*60}`,
+           `<b>2</b>  Geteilt durch die Strecke: ${ab*60} ÷ ${dist} = <b>${grad}</b> Grad`],
+      hinweis:'Auf 60 Meilen entspricht ein Grad genau einer Meile Versatz.'};
+  }
+  if(art==='reserve'){
+    const grund=rnd(3,12)*100, p=pick([10,20,25,50]);
+    return {art:'flug',frage:`Grundbedarf ${grund} Liter. Welche Tankmenge ergibt sich einschließlich ${p} Prozent Reserve?`,
+      einheit:'Liter',typ:'zahl',loesung:grund*(100+p)/100,
+      weg:[`<b>1</b>  Reserve: ${grund} × ${p} ÷ 100 = ${grund*p/100}`,
+           `<b>2</b>  Summe: ${grund} plus ${grund*p/100} = <b>${grund*(100+p)/100}</b> Liter`],
+      hinweis:'Die Reserve wird auf den Grundbedarf addiert.'};
+  }
+  const start=rnd(0,23)*60+pick([0,5,10,15,20,25,30,35,40,45,50,55]);
+  const dauer=rnd(1,5)*60+pick([0,10,15,20,25,35,40,50]);
+  const an=start+dauer;
+  return {art:'flug',frage:`Abflug ${hhmm(start)} UTC, Flugzeit ${Math.floor(dauer/60)} Stunden und ${dauer%60} Minuten. Wie lautet die Landezeit? Antwort als vier Ziffern.`,
+    einheit:'UTC, zum Beispiel 1425',typ:'zahl',loesung:parseInt(hhmm(an),10),ziffern4:true,
+    weg:[`<b>1</b>  Stunden: ${Math.floor(start/60)} plus ${Math.floor(dauer/60)} = ${Math.floor(start/60)+Math.floor(dauer/60)}`,
+         `<b>2</b>  Minuten: ${start%60} plus ${dauer%60} = ${start%60+dauer%60}`,
+         `<b>3</b>  Ergebnis nach Übertrag: <b>${hhmm(an)}</b> UTC`],
+    hinweis:'Ab 60 Minuten wird eine Stunde übertragen, nach 2359 beginnt die Zählung bei 0000.'};
+}
+
+/* =========================================================
+   4  INSTRUMENTE
+   ========================================================= */
+function gauge(inner,name){
+  return `<div><svg class="gauge" viewBox="0 0 100 100">
+    <circle class="dial" cx="50" cy="50" r="46"/>${inner}</svg>
+    <div class="gname">${name}</div></div>`;
+}
+function svgHorizon(pitch,bank){
+  const id='h'+(++uid), p=pitch*1.7;
+  const P=(deg,r)=>[50+r*Math.cos((deg-90)*Math.PI/180), 50+r*Math.sin((deg-90)*Math.PI/180)];
+  let sc='';
+  [10,20,30,45,60].forEach(d=>[d,-d].forEach(x=>{
+    const lang=(Math.abs(x)===30||Math.abs(x)===60), a=P(x,lang?36.5:38.5), b=P(x,43.5);
+    sc+=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="#e6eef7" stroke-width="${lang?1.4:1}"/>`;
+  }));
+  let pl='';
+  [5,10,15,20].forEach(d=>[d,-d].forEach(x=>{
+    const w=(Math.abs(x)%10===0)?9:4.5;
+    pl+=`<line x1="${50-w}" y1="${50-x*1.7}" x2="${50+w}" y2="${50-x*1.7}" stroke="#e6eef7" stroke-width=".9"/>`;
+    if(Math.abs(x)%20===0) pl+=`<text x="${50-w-1.8}" y="${50-x*1.7+1.5}" fill="#e6eef7" font-size="4" text-anchor="end" font-family="var(--mono)">${Math.abs(x)}</text>`
+        +`<text x="${50+w+1.8}" y="${50-x*1.7+1.5}" fill="#e6eef7" font-size="4" text-anchor="start" font-family="var(--mono)">${Math.abs(x)}</text>`;
+  }));
+  return gauge(`
+    <defs><clipPath id="${id}"><circle cx="50" cy="50" r="36"/></clipPath></defs>
+    <g clip-path="url(#${id})">
+      <g transform="rotate(${-bank} 50 50)">
+        <g transform="translate(0 ${p})">
+          <rect x="-60" y="-100" width="220" height="150" fill="#2f6fa8"/>
+          <rect x="-60" y="50" width="220" height="150" fill="#7a5a2a"/>
+          <line x1="-60" y1="50" x2="160" y2="50" stroke="#e6eef7" stroke-width="1.2"/>
+          ${pl}
+        </g>
+        <polygon points="50,15.5 46.6,21.5 53.4,21.5" fill="#ffb020"/>
+      </g>
+    </g>
+    <circle cx="50" cy="50" r="36" fill="none" stroke="#2b3d50" stroke-width="1"/>
+    ${sc}
+    <polygon points="50,12.5 46.8,6.2 53.2,6.2" fill="#e6eef7"/>
+    <path d="M27 50 h13 M60 50 h13" stroke="#ffb020" stroke-width="2.6" fill="none"/>
+    <path d="M44 50 h3 M53 50 h3" stroke="#ffb020" stroke-width="2.6" fill="none"/>
+    <circle cx="50" cy="50" r="1.6" fill="#ffb020"/>`,'HORIZONT');
+}
+function svgAlt(alt){
+  let m='';
+  for(let i=0;i<50;i++){
+    const a=(i*7.2-90)*Math.PI/180, maj=i%5===0, r1=maj?32:36;
+    m+=`<line x1="${50+r1*Math.cos(a)}" y1="${50+r1*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="${maj?'#e6eef7':'#8fa4b8'}" stroke-width="${maj?1.4:.7}"/>`;
+    if(maj) m+=`<text class="dlbl" x="${50+25*Math.cos(a)}" y="${50+25*Math.sin(a)}">${i/5}</text>`;
+  }
+  const nd=(deg,len,w,tail)=>{const a=(deg-90)*Math.PI/180;
+    return `<line x1="${50-(tail||5)*Math.cos(a)}" y1="${50-(tail||5)*Math.sin(a)}" x2="${50+len*Math.cos(a)}" y2="${50+len*Math.sin(a)}" stroke="#e6eef7" stroke-width="${w}" stroke-linecap="round"/>`;};
+  const zk=(alt%100000)/100000*360, azk=(zk-90)*Math.PI/180;
+  const spitze=`<polygon points="${50+17*Math.cos(azk)},${50+17*Math.sin(azk)} ${50+12*Math.cos(azk)+2.2*Math.sin(azk)},${50+12*Math.sin(azk)-2.2*Math.cos(azk)} ${50+12*Math.cos(azk)-2.2*Math.sin(azk)},${50+12*Math.sin(azk)+2.2*Math.cos(azk)}" fill="#e6eef7"/>`
+    + `<line x1="${50-4*Math.cos(azk)}" y1="${50-4*Math.sin(azk)}" x2="${50+13*Math.cos(azk)}" y2="${50+13*Math.sin(azk)}" stroke="#e6eef7" stroke-width=".9"/>`;
+  const fenster=`<rect x="62" y="46.5" width="17" height="7.5" rx="1" fill="#05090d" stroke="#8fa4b8" stroke-width=".7"/>
+    <text x="70.5" y="52.4" class="dlbl" style="font-size:5px">1013</text>`;
+  return gauge(m + `<text x="50" y="66" class="dlbl" style="font-size:5px;letter-spacing:1px">FEET</text>` + fenster
+    + spitze
+    + nd((alt%10000)/10000*360, 21, 4.2)
+    + nd((alt%1000)/1000*360, 33, 2)
+    + `<circle cx="50" cy="50" r="2.6" fill="#9fb3c6"/>`,'HÖHENMESSER');
+}
+function iasDeg(v){ return (v-40)/160*320; }
+function bogen(r,v1,v2,col,w){
+  const a=d=>[50+r*Math.cos((iasDeg(d)-90)*Math.PI/180), 50+r*Math.sin((iasDeg(d)-90)*Math.PI/180)];
+  const p1=a(v1), p2=a(v2), gross=(iasDeg(v2)-iasDeg(v1))>180?1:0;
+  return `<path d="M${p1[0]} ${p1[1]} A ${r} ${r} 0 ${gross} 1 ${p2[0]} ${p2[1]}" fill="none" stroke="${col}" stroke-width="${w}"/>`;
+}
+function svgIas(v){
+  let m='';
+  for(let s=40;s<=200;s+=10){
+    const a=(iasDeg(s)-90)*Math.PI/180, maj=s%20===0;
+    m+=`<line x1="${50+(maj?31:35)*Math.cos(a)}" y1="${50+(maj?31:35)*Math.sin(a)}" x2="${50+39*Math.cos(a)}" y2="${50+39*Math.sin(a)}" stroke="#e6eef7" stroke-width="${maj?1.3:.7}"/>`;
+    if(maj) m+=`<text class="dlbl" style="font-size:6.5px" x="${50+25.5*Math.cos(a)}" y="${50+25.5*Math.sin(a)}">${s}</text>`;
+  }
+  const arcs = bogen(35.5,45,85,'#e6eef7',2)
+             + bogen(41,50,140,'#3ddc84',2)
+             + bogen(41,140,180,'#ffb020',2)
+             + bogen(41,180,190,'#ff5c5c',2.4);
+  const a=(iasDeg(v)-90)*Math.PI/180;
+  return gauge(arcs+m
+    + `<text x="50" y="39" class="dlbl" style="font-size:5px;letter-spacing:1px">KNOTS</text>`
+    + `<line x1="${50-6*Math.cos(a)}" y1="${50-6*Math.sin(a)}" x2="${50+33*Math.cos(a)}" y2="${50+33*Math.sin(a)}" stroke="#e6eef7" stroke-width="2.2" stroke-linecap="round"/>`
+    + `<circle cx="50" cy="50" r="2.6" fill="#9fb3c6"/>`,'FAHRTMESSER');
+}
+function svgHsi(hdg){
+  let m='';
+  for(let d=0;d<360;d+=5){
+    const lang=d%10===0, a=(d-90)*Math.PI/180, r1=lang?33:36.5;
+    m+=`<line x1="${50+r1*Math.cos(a)}" y1="${50+r1*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="#f2f4f7" stroke-width="${lang?1.5:.9}"/>`;
+    if(d%30===0){
+      const kard=(d%90===0);
+      const l=d===0?'N':d===90?'E':d===180?'S':d===270?'W':pad3(d);
+      const x=50+29.5*Math.cos(a), y=50+29.5*Math.sin(a);
+      m+=`<text x="${x}" y="${y}" transform="rotate(${d} ${x} ${y})" fill="#f2f4f7" font-size="${kard?7.5:5.6}" font-weight="${kard?'700':'400'}" letter-spacing="-.2" text-anchor="middle" dominant-baseline="middle" font-family="var(--sans)">${l}</text>`;
+    }
+  }
+  const flieger=`<path d="M50 32.5 L52.4 40.5 L52.4 45.2 L68 50.2 L68 53.4 L52.4 51.6 L52.4 61.4 L57.8 65.2
+    L57.8 67.4 L50 65.6 L42.2 67.4 L42.2 65.2 L47.6 61.4 L47.6 51.6 L32 53.4 L32 50.2 L47.6 45.2 L47.6 40.5 Z"
+    fill="none" stroke="#f2f4f7" stroke-width="1.3" stroke-linejoin="round"/>`;
+  return gauge(`<circle cx="50" cy="50" r="40" fill="#3a3d41"/>
+    <g transform="rotate(${-hdg} 50 50)">${m}</g>
+    ${flieger}
+    <polygon points="50,10 44.8,2.6 55.2,2.6" fill="#f2f4f7"/>`,'KURSANZEIGE');
+}
+function instrPanel(v){
+  return `<div class="panel">${svgHorizon(v.pitch,v.bank)}${svgAlt(v.alt)}${svgIas(v.ias)}${svgHsi(v.hdg)}</div>`;
+}
+function genInstr(){
+  const leicht=CFG.stufe==='leicht';
+  const v={
+    alt: leicht ? rnd(1,19)*500 : rnd(2,39)*100 + (CFG.stufe==='schwer'?rnd(0,9)*1000:0),
+    ias: leicht ? rnd(3,19)*10 : rnd(6,19)*10,
+    hdg: leicht ? rnd(1,12)*30 : rnd(1,36)*10,
+    bank: pick(leicht?[0,10,20,30]:[0,10,15,20,30,45,60])*(Math.random()<.5?-1:1),
+    pitch: pick(leicht?[0,10,-10]:[0,5,10,15,-5,-10,-15])
+  };
+  if(v.alt>19900) v.alt=19900;
+  const panel=instrPanel(v);
+  const opts=['alt','ias','hdg','pitch'];
+  if(v.bank!==0) opts.push('bank','banks');
+  const w=pick(opts);
+  const basis={art:'instr',grafik:panel,loesungsGrafik:panel};
+
+  if(w==='alt'){
+    const t=Math.floor(v.alt/1000), hs=(v.alt%1000)/100;
+    return Object.assign(basis,{frage:'Welche Höhe zeigt der Höhenmesser?',einheit:'Fuß',typ:'zahl',loesung:v.alt,
+      weg:[`<b>1</b>  Kurze dicke Nadel steht auf ${t}, also ${t*1000} Fuß`,
+           `<b>2</b>  Lange dünne Nadel steht auf ${hs}, also ${hs*100} Fuß`,
+           `<b>3</b>  Summe: <b>${v.alt}</b> Fuß`],
+      hinweis:'Kurz und dick zählt Tausender, lang und dünn zählt Hunderter, der schmale Zeiger mit Spitze steht für Zehntausender.'});
+  }
+  if(w==='ias'){
+    return Object.assign(basis,{frage:'Welche Geschwindigkeit zeigt der Fahrtmesser?',einheit:'Knoten',typ:'zahl',loesung:v.ias,
+      weg:[`<b>1</b>  Ein Skalenstrich entspricht 10 Knoten`,
+           `<b>2</b>  Die Nadel steht auf <b>${v.ias}</b> Knoten`],
+      hinweis:'Die Skala beginnt bei 40 Knoten. Beschriftet ist jeder zweite Strich, dazwischen in Zehnerschritten zählen.'});
+  }
+  if(w==='hdg'){
+    return Object.assign(basis,{frage:'Welchen Kurs zeigt die Kursanzeige?',einheit:'Grad',typ:'zahl',kurs:true,loesung:norm(v.hdg),
+      weg:[`<b>1</b>  Abgelesen wird unter der Marke oben`,
+           `<b>2</b>  Dort steht <b>${pad3(norm(v.hdg))}</b>`],
+      hinweis:'Abgelesen wird unter der festen Marke oben. Ein kurzer Strich sind 5 Grad, ein langer 10 Grad, beschriftet ist alle 30 Grad.'});
+  }
+  if(w==='pitch'){
+    const l=v.pitch>0?'STEIGT':v.pitch<0?'SINKT':'HORIZONT';
+    return Object.assign(basis,{frage:'Welche Längsneigung zeigt der künstliche Horizont?',typ:'wahl',optionen:['STEIGT','HORIZONT','SINKT'],loesung:l,
+      weg:[`<b>1</b>  Das Symbol liegt ${v.pitch>0?'über':v.pitch<0?'unter':'genau auf'} der Horizontlinie`,
+           `<b>2</b>  Längsneigung etwa ${Math.abs(v.pitch)} Grad, also <b>${l}</b>`],
+      hinweis:'Symbol über der Linie bedeutet Steigflug, Symbol unterhalb bedeutet Sinkflug.'});
+  }
+  if(w==='bank'){
+    return Object.assign(basis,{frage:'Wie viel Grad Querneigung zeigt der künstliche Horizont?',einheit:'Grad',typ:'zahl',loesung:Math.abs(v.bank),
+      weg:[`<b>1</b>  Die Marke steht auf ${Math.abs(v.bank)} Grad`,
+           `<b>2</b>  Querneigung <b>${Math.abs(v.bank)}</b> Grad nach ${v.bank>0?'rechts':'links'}`],
+      hinweis:'Der Zeiger der Kreiselscheibe läuft gegen die feste Skala mit Marken bei 10, 20, 30, 45 und 60 Grad. Abgelesen wird der Betrag, die Richtung zeigt die Horizontlinie.'});
+  }
+  return Object.assign(basis,{frage:'In welche Richtung ist das Flugzeug geneigt?',typ:'wahl',optionen:['LINKS','RECHTS'],loesung:v.bank>0?'RECHTS':'LINKS',
+    weg:[`<b>1</b>  Die Horizontlinie fällt nach ${v.bank>0?'links':'rechts'} ab`,
+         `<b>2</b>  Also <b>${v.bank>0?'RECHTS':'LINKS'}</b> mit ${Math.abs(v.bank)} Grad`],
+    hinweis:'Die tiefere Tragfläche zeigt die Neigungsrichtung.'});
+}
+
+/* =========================================================
+   5  ZAHLENREIHEN
+   ========================================================= */
+function genReihe(){
+  const typ=pick(CFG.stufe==='leicht'?['add','add','mul']:['add','mul','alt','quad','fib','doppel']);
+  let s=[], regel='', n=6;
+  if(typ==='add'){ const d=rnd(2,12)*(Math.random()<.25?-1:1);
+    const a=d>0?rnd(2,30):rnd(3,20)+n*Math.abs(d);
+    for(let i=0;i<=n;i++) s.push(a+i*d); regel=`Jeder Schritt ${d>0?'plus':'minus'} ${Math.abs(d)}`; }
+  else if(typ==='mul'){ const a=rnd(1,6), f=pick([2,3]);
+    for(let i=0;i<=n;i++) s.push(a*Math.pow(f,i)); n=5; s=s.slice(0,6); regel=`Jeder Schritt mal ${f}`; }
+  else if(typ==='alt'){ const d1=rnd(2,9), d2=rnd(2,9), a=rnd(3,20)+3*d2;
+    let v=a; for(let i=0;i<=n;i++){ s.push(v); v+= i%2===0?d1:-d2; } regel=`Abwechselnd plus ${d1} und minus ${d2}`; }
+  else if(typ==='quad'){ const a=rnd(1,5);
+    for(let i=0;i<=n;i++) s.push((a+i)*(a+i)); regel=`Quadratzahlen ab ${a} mal ${a}`; }
+  else if(typ==='fib'){ let x=rnd(1,6), y=rnd(2,9); s=[x,y];
+    for(let i=2;i<=n;i++) s.push(s[i-1]+s[i-2]); regel='Summe der beiden Vorgänger'; }
+  else { const a=rnd(2,9), d=rnd(2,7);
+    let v=a; for(let i=0;i<=n;i++){ s.push(v); v = i%2===0 ? v*2 : v+d; } regel=`Abwechselnd mal 2 und plus ${d}`; }
+  const ans=s[s.length-1], zeigen=s.slice(0,-1);
+  return {art:'reihe',frage:`Wie geht die Reihe weiter?<br><span class="mono" style="font-size:22px;color:var(--amber);letter-spacing:2px">${zeigen.join('   ')}   ?</span>`,
+    einheit:'nächste Zahl',typ:'zahl',loesung:ans,
+    weg:[`<b>1</b>  Regel: ${regel}`,
+         `<b>2</b>  Vollständig: ${s.join(', ')}`,
+         `<b>3</b>  Gesucht war <b>${ans}</b>`],
+    hinweis:'Zuerst die Differenzen benachbarter Glieder bilden, anschließend auf Faktoren prüfen.'};
+}
+
+/* =========================================================
+   Kompass
+   ========================================================= */
+function compass(h,t){
+  const R=88, cx=100, cy=100;
+  let ticks='';
+  for(let d=0;d<360;d+=10){
+    const maj=d%30===0, r1=maj?R-13:R-8, a=(d-90)*Math.PI/180;
+    ticks+=`<line class="tick ${maj?'tickmaj':''}" x1="${cx+r1*Math.cos(a)}" y1="${cy+r1*Math.sin(a)}" x2="${cx+R*Math.cos(a)}" y2="${cy+R*Math.sin(a)}"/>`;
+    if(maj){ const rl=R-26, lbl=d===0?'N':d===90?'E':d===180?'S':d===270?'W':String(d/10);
+      ticks+=`<text class="roselbl" x="${cx+rl*Math.cos(a)}" y="${cy+rl*Math.sin(a)+3}">${lbl}</text>`; }
+  }
+  const nd=(deg,col,len)=>{const a=(deg-90)*Math.PI/180;
+    return `<line class="needle" style="stroke:${col}" x1="${cx}" y1="${cy}" x2="${cx+len*Math.cos(a)}" y2="${cy+len*Math.sin(a)}"/>`;};
+  return `<svg class="compass" width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">
+    <circle class="rose" cx="${cx}" cy="${cy}" r="${R}"/>${ticks}
+    ${h?nd(h,'#ffb020',R-30):''}${t?nd(t,'#4fd6e0',R-44):''}
+    <circle cx="${cx}" cy="${cy}" r="4" fill="#ffb020"/></svg>`;
+}
+
+/* =========================================================
+   6  ENGLISCH
+   ========================================================= */
+const EN={
+leicht:[
+ ['Wie heißt „Landebahn" auf Englisch?',['runway','taxiway','apron'],'runway','taxiway ist der Rollweg, apron das Vorfeld.'],
+ ['Wie heißt „Fahrwerk" auf Englisch?',['landing gear','wing flap','tail rotor'],'landing gear','wing flap ist die Landeklappe.'],
+ ['Wie heißt „Flughöhe" auf Englisch?',['altitude','latitude','attitude'],'altitude','attitude bedeutet Fluglage, latitude ist der Breitengrad.'],
+ ['Wie heißt „Treibstoff" auf Englisch?',['fuel','oil','load'],'fuel','oil ist das Öl, load die Ladung.'],
+ ['Wie heißt „Besatzung" auf Englisch?',['crew','cargo','crowd'],'crew','cargo ist die Fracht, crowd die Menschenmenge.'],
+ ['Wie heißt „Tragfläche" auf Englisch?',['wing','tail','blade'],'wing','tail ist das Heck, blade das Blatt.'],
+ ['Wie heißt „Rotorblatt" auf Englisch?',['rotor blade','propeller shaft','rudder'],'rotor blade','rudder ist das Seitenruder.'],
+ ['Wie heißt „Wolke" auf Englisch?',['cloud','fog','rain'],'cloud','fog ist Nebel, rain der Regen.'],
+ ['Wie heißt „Nebel" auf Englisch?',['fog','frost','storm'],'fog','frost ist Frost, storm der Sturm.'],
+ ['Wie heißt „Gegenwind" auf Englisch?',['headwind','tailwind','crosswind'],'headwind','tailwind ist Rückenwind, crosswind Seitenwind.'],
+ ['Wie heißt „Seitenwind" auf Englisch?',['crosswind','headwind','downwind'],'crosswind','downwind bezeichnet den Gegenanflug.'],
+ ['Wie heißt „Start" im Sinne des Abhebens?',['takeoff','landing','taxiing'],'takeoff','taxiing ist das Rollen am Boden.'],
+ ['Wie heißt „Notfall" auf Englisch?',['emergency','entrance','engine'],'emergency','engine ist der Motor.'],
+ ['Wie heißt „Sicherheitsgurt" auf Englisch?',['seat belt','life vest','headset'],'seat belt','life vest ist die Schwimmweste.'],
+ ['Wie heißt „Höhenmesser" auf Englisch?',['altimeter','speedometer','compass'],'altimeter','compass ist der Kompass.'],
+ ['Wie heißt „Gewicht" auf Englisch?',['weight','height','width'],'weight','height ist die Höhe, width die Breite.'],
+ ['Wie heißt „Verspätung" auf Englisch?',['delay','display','decay'],'delay','display ist die Anzeige.'],
+ ['Wie heißt „steigen" im Flug?',['to climb','to clean','to close'],'to climb','to descend ist das Gegenteil.'],
+ ['Wie heißt „sinken" im Flug?',['to descend','to defend','to decide'],'to descend','to climb ist das Gegenteil.'],
+ ['Wie heißt „warten" im Sinne von Technik?',['to maintain','to remain','to contain'],'to maintain','maintenance ist die Wartung.'],
+ ['Wie heißt „laden" im Sinne von Fracht?',['to load','to lead','to lend'],'to load','to lend heißt verleihen.'],
+ ['Wie heißt „Werkzeug" auf Englisch?',['tool','tube','tire'],'tool','tube ist das Rohr, tire der Reifen.'],
+ ['Wie heißt „Karte" im Sinne einer Flugkarte?',['chart','card','charter'],'chart','card ist die Spielkarte oder Ausweiskarte.'],
+ ['Wie heißt „Warnleuchte" auf Englisch?',['warning light','landing light','flashlight'],'warning light','flashlight ist die Taschenlampe.'],
+ ['Wie heißt „Geschwindigkeit" auf Englisch?',['speed','space','spare'],'speed','spare bedeutet Ersatz.'],
+ ['Wie heißt „Hangar" auf Englisch?',['hangar','cabin','cockpit'],'hangar','cabin ist die Kabine.'],
+ ['The pilot ___ the checklist every morning.',['check','checks','checking'],'checks','Dritte Person Singular bekommt die Endung s.'],
+ ['We ___ flying to Kiel tomorrow.',['are','is','be'],'are','We verlangt are.'],
+ ['There ___ two helicopters on the apron.',['is','are','be'],'are','Der Plural verlangt are.'],
+ ['He wants to become ___ engineer.',['a','an','the'],'an','Vor Vokallaut steht an.'],
+ ['The weather is ___ than yesterday.',['good','better','best'],'better','Der Vergleich mit than verlangt den Komparativ.'],
+ ['We ___ take off now.',['can','cans','could to'],'can','Modalverben bekommen kein s und kein to.'],
+ ['I am interested ___ aviation.',['in','on','at'],'in','interested in ist eine feste Fügung.'],
+ ['They arrived ___ the airport at six.',['in','at','on'],'at','Bei Orten als Punkt steht at.'],
+ ['The flight ___ at ten yesterday.',['starts','started','has started'],'started','yesterday verlangt Simple Past.'],
+ ['We do not have ___ spare parts.',['some','any','no'],'any','In der Verneinung steht any.'],
+ ['This checklist is ___ than the old one.',['short','shorter','shortest'],'shorter','Vergleich mit than verlangt den Komparativ.'],
+ ['She ___ in Berlin since 2019.',['lives','has lived','is living'],'has lived','since verlangt das Present Perfect.']
+],
+mittel:[
+ ['Was bedeutet „to abort"?',['abbrechen','verschieben','verlängern'],'abbrechen','to postpone heißt verschieben.'],
+ ['Was bedeutet „to divert"?',['ausweichen','abheben','absteigen'],'ausweichen','Ein Ausweichflugplatz heißt alternate.'],
+ ['Was bedeutet „approach"?',['Anflug','Abflug','Umkehr'],'Anflug','departure ist der Abflug.'],
+ ['Was bedeutet „maintenance"?',['Wartung','Haltung','Wartezeit'],'Wartung','to maintain heißt warten oder instand halten.'],
+ ['Was bedeutet „gauge"?',['Messgerät','Messfehler','Schalter'],'Messgerät','Ein fuel gauge ist die Tankanzeige.'],
+ ['Was bedeutet „to refuel"?',['auftanken','abtanken','nachrüsten'],'auftanken','fuel ist der Treibstoff.'],
+ ['Was bedeutet „shift"?',['Schicht','Schiff','Schacht'],'Schicht','Die Nachtschicht heißt night shift.'],
+ ['Was bedeutet „to avoid"?',['vermeiden','erlauben','ankündigen'],'vermeiden','to announce heißt ankündigen.'],
+ ['Was bedeutet „reliable"?',['zuverlässig','verfügbar','austauschbar'],'zuverlässig','available heißt verfügbar.'],
+ ['Was bedeutet „to reduce"?',['verringern','wiederholen','ersetzen'],'verringern','to replace heißt ersetzen.'],
+ ['Was bedeutet „to require"?',['erfordern','erwidern','ersuchen'],'erfordern','requirement ist die Anforderung.'],
+ ['Was bedeutet „spare part"?',['Ersatzteil','Zubehör','Sparbetrag'],'Ersatzteil','accessory heißt Zubehör.'],
+ ['Was bedeutet „schedule"?',['Zeitplan','Schulung','Schaltung'],'Zeitplan','scheduled bedeutet planmäßig.'],
+ ['Was bedeutet „hazard"?',['Gefahr','Zufall','Nebel'],'Gefahr','hazardous heißt gefährlich.'],
+ ['Was bedeutet „shortage"?',['Mangel','Kürzung','Kurzschluss'],'Mangel','fuel shortage ist der Treibstoffmangel.'],
+ ['Was bedeutet „to release"?',['freigeben','festhalten','erneuern'],'freigeben','to hold heißt festhalten.'],
+ ['Was bedeutet „current" als Substantiv?',['Strömung','Vorhang','Stromausfall'],'Strömung','Als Adjektiv bedeutet current aktuell.'],
+ ['Was bedeutet „to postpone"?',['verschieben','absagen','vorziehen'],'verschieben','to cancel heißt absagen.'],
+ ['Was bedeutet „safety"?',['Sicherheit','Rettung','Vorsicht'],'Sicherheit','rescue heißt Rettung.'],
+ ['Was bedeutet „forecast"?',['Vorhersage','Rückblick','Vorschlag'],'Vorhersage','weather forecast ist die Wettervorhersage.'],
+ ['Low visibility can ___ the approach.',['affect','effect','afford'],'affect','to affect heißt beeinflussen, effect ist die Wirkung als Substantiv.'],
+ ['The engine needs regular ___ .',['maintenance','entertainment','employment'],'maintenance','entertainment heißt Unterhaltung.'],
+ ['Please ___ your seat belt.',['fasten','fast','fix'],'fasten','to fasten heißt anlegen oder festmachen.'],
+ ['The controller ___ us to descend.',['advised','adviced','advice'],'advised','Das Verb schreibt sich advise, das Substantiv advice.'],
+ ['The flight was ___ because of fog.',['cancelled','canceling','cancel'],'cancelled','Passiv verlangt das Partizip.'],
+ ['The aircraft took ___ at noon.',['off','up','in'],'off','to take off heißt abheben.'],
+ ['Please switch ___ the radio.',['on','in','at'],'on','to switch on heißt einschalten.'],
+ ['Please fill ___ the form.',['in','over','under'],'in','to fill in heißt ausfüllen.'],
+ ['The tank is almost ___ .',['empty','emptied','empt'],'empty','empty ist das Adjektiv.'],
+ ['The report ___ by the instructor yesterday.',['was written','is written','wrote'],'was written','Passiv in der Vergangenheit mit was und Partizip.'],
+ ['She said she ___ tired.',['is','was','has'],'was','In der indirekten Rede rückt die Zeit zurück.'],
+ ['You ___ smoke near the fuel truck.',['must not','do not must','have not to'],'must not','Verbot wird mit must not ausgedrückt.'],
+ ['How long ___ you been waiting?',['have','has','are'],'have','Present Perfect mit you verlangt have.'],
+ ['I have been flying ___ five years.',['since','for','during'],'for','for steht bei einer Zeitspanne.'],
+ ['If the weather ___ , we will cancel the flight.',['worsens','will worsen','would worsen'],'worsens','Im if Satz der ersten Bedingung steht das Präsens.'],
+ ['The aircraft ___ every one hundred hours.',['is inspected','are inspected','inspects'],'is inspected','Passiv im Präsens mit is und Partizip.']
+],
+schwer:[
+ ['Was bedeutet „eventually"?',['schließlich','eventuell','ereignisreich'],'schließlich','Eventuell heißt possibly, das ist ein falscher Freund.'],
+ ['Was bedeutet „actually"?',['tatsächlich','aktuell','handelnd'],'tatsächlich','Aktuell heißt current, ein weiterer falscher Freund.'],
+ ['Was bedeutet „to become"?',['werden','bekommen','begegnen'],'werden','Bekommen heißt to get oder to receive.'],
+ ['Was bedeutet „sensible"?',['vernünftig','empfindlich','sinnlos'],'vernünftig','Empfindlich heißt sensitive.'],
+ ['Was bedeutet „attitude" im Flugkontext?',['Fluglage','Flughöhe','Einstellungssache'],'Fluglage','Der künstliche Horizont heißt attitude indicator.'],
+ ['Was bedeutet „stall"?',['Strömungsabriss','Stillstand','Stall'],'Strömungsabriss','Die Warnung heißt stall warning.'],
+ ['Was bedeutet „lift"?',['Auftrieb','Widerstand','Schub'],'Auftrieb','drag ist der Widerstand, thrust der Schub.'],
+ ['Was bedeutet „drag"?',['Widerstand','Auftrieb','Schub'],'Widerstand','lift ist der Auftrieb.'],
+ ['Was bedeutet „thrust"?',['Schub','Schutz','Sturz'],'Schub','Der Schubhebel heißt throttle.'],
+ ['Was bedeutet „pitch" als Fluglage?',['Nicken','Rollen','Gieren'],'Nicken','roll ist das Rollen, yaw das Gieren.'],
+ ['Was bedeutet „yaw"?',['Gieren','Nicken','Rollen'],'Gieren','Gieren ist die Drehung um die Hochachse.'],
+ ['Was bedeutet „apron" am Flugplatz?',['Vorfeld','Rollweg','Landebahn'],'Vorfeld','taxiway ist der Rollweg.'],
+ ['Was bedeutet „to taxi"?',['rollen','tanken','abheben'],'rollen','Gemeint ist die Bewegung am Boden.'],
+ ['Was bedeutet „gust"?',['Bö','Guss','Gischt'],'Bö','Böen heißen gusts im Wetterbericht.'],
+ ['Was bedeutet „range"?',['Reichweite','Rang','Reihe'],'Reichweite','Die maximale Reichweite heißt maximum range.'],
+ ['Was bedeutet „payload"?',['Nutzlast','Bezahlung','Ladefläche'],'Nutzlast','Das Abfluggewicht heißt takeoff weight.'],
+ ['Was bedeutet „to exceed"?',['überschreiten','ausschließen','beschleunigen'],'überschreiten','to exclude heißt ausschließen.'],
+ ['Was bedeutet „accurate"?',['genau','pünktlich','sparsam'],'genau','Pünktlich heißt punctual oder on time.'],
+ ['Was bedeutet „estimate"?',['Schätzung','Bestätigung','Anspruch'],'Schätzung','Die geschätzte Ankunftszeit heißt estimated time of arrival.'],
+ ['Was bedeutet „thorough"?',['gründlich','ungefähr','durchgehend'],'gründlich','Nicht zu verwechseln mit through, also durch.'],
+ ['Was bedeutet „to withstand"?',['standhalten','verstehen','abstehen'],'standhalten','Zum Beispiel to withstand turbulence.'],
+ ['Was bedeutet „to comply with"?',['einhalten','sich beschweren','zusammenstellen'],'einhalten','to complain heißt sich beschweren.'],
+ ['Was bedeutet „aisle" im Flugzeug?',['Gang','Insel','Achse'],'Gang','Der Fensterplatz heißt window seat.'],
+ ['Was bedeutet „to overtake"?',['überholen','übernehmen','überziehen'],'überholen','to take over heißt übernehmen.'],
+ ['Was bedeutet „shortcoming"?',['Mangel','Abkürzung','Kürzung'],'Mangel','shortcut ist die Abkürzung.'],
+ ['Heavy rain can ___ visibility.',['reduce','deduce','produce'],'reduce','to reduce heißt verringern.'],
+ ['The captain has to ___ with the regulations.',['comply','apply','supply'],'comply','comply with ist eine feste Fügung.'],
+ ['Please ___ the tower before departure.',['contact','contract','connect'],'contact','to contact heißt Verbindung aufnehmen.'],
+ ['The wind is ___ from the north.',['blowing','blown','blow'],'blowing','Der laufende Vorgang steht im Progressive.'],
+ ['We had to ___ to another airfield.',['divert','diverse','divide'],'divert','diverse ist ein Adjektiv und heißt vielfältig.']
+]};
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]];} return a; }
+function genEnglisch(){
+  const pool = CFG.stufe==='leicht'?EN.leicht : CFG.stufe==='mittel'?EN.leicht.concat(EN.mittel) : EN.mittel.concat(EN.schwer);
+  const [txt,opt,loes,note]=pick(pool);
+  const luecke = txt.indexOf('___')>=0;
+  return {art:'englisch',
+    frage: luecke
+      ? `Passendes Wort einsetzen.<br><span class="mono" style="display:block;margin-top:10px;font-size:18px;color:var(--amber);line-height:1.5">${txt}</span>`
+      : `<span style="font-size:19px;line-height:1.45">${txt}</span>`,
+    typ:'wahl', optionen:shuffle(opt), loesung:loes,
+    weg: luecke ? [`<b>1</b>  Richtig: <b>${txt.replace('___',loes)}</b>`,`<b>2</b>  ${note}`]
+                : [`<b>1</b>  Richtig: <b>${loes}</b>`,`<b>2</b>  ${note}`],
+    hinweis: luecke?'Erst die Wortart bestimmen, dann die Form prüfen.'
+                   :'Ähnlich klingende Wörter sind oft falsche Freunde. Der Sachzusammenhang entscheidet.'};
+}
+
+/* =========================================================
+   7  REAKTION UND FARBE
+   ========================================================= */
+const FARBEN=[
+  {k:'rot',n:'ROT',c:'#ff5555'},
+  {k:'gruen',n:'GRÜN',c:'#3ddc84'},
+  {k:'blau',n:'BLAU',c:'#4fa3ff'},
+  {k:'gelb',n:'GELB',c:'#ffd83d'},
+  {k:'violett',n:'VIOLETT',c:'#c07bff'}
+];
+function farbeAktiv(){ return CFG.merk.farbe || CFG.typen.reaktion || CFG.doppel; }
+function showFarbe(eyebrow,farbe,text,secs,next,danger){
+  clearTimers(); keyMode='hold'; slot.classList.add('hidden');
+  beep(danger?320:900,160); buzz(danger?[40,60,40]:30);
+  view.innerHTML=`
+    <div class="card letterstage ${danger?'warn':''}">
+      <div class="eyebrow">${eyebrow}</div>
+      <div class="scheibe" style="background:${farbe.c}"></div>
+      <div class="nato" style="margin-top:16px">${farbe.n}</div>
+      <p class="hold">${text}</p>
+      <div class="countdown mono" id="cd">${secs}</div>
+    </div>
+    <button class="btn ghost" id="skip">VERSTANDEN</button>`;
+  let left=secs; const el=document.getElementById('cd');
+  const done=()=>{clearTimers();keyMode=null;next();};
+  tickId=setInterval(()=>{left--;if(el)el.textContent=left;if(left<=0)done();},1000);
+  document.getElementById('skip').addEventListener('click',done);
+  showLetter.done=done;
+}
+function freiePosition(d){
+  const bar=document.querySelector('.topbar');
+  const yMin=(bar?bar.getBoundingClientRect().bottom:60)+10;
+  const yMax=window.innerHeight-10-d, xMax=window.innerWidth-10-d;
+  if(yMax<=yMin||xMax<=10) return null;
+  const sperr=[...document.querySelectorAll('#view input, #view button, #view .chip, #view .grid, #view .farbwahl')]
+    .map(e=>e.getBoundingClientRect()).filter(r=>r.width>0);
+  for(let i=0;i<26;i++){
+    const x=rnd(10,xMax), y=rnd(yMin,yMax);
+    const frei=!sperr.some(b=> x < b.right+8 && x+d > b.left-8 && y < b.bottom+8 && y+d > b.top-8);
+    if(frei) return {x,y};
+  }
+  return null;
+}
+function starteNeben(){
+  if(!CFG.doppel || !S || !S.farbe) return;
+  later(nebenZyklus, rnd(2500,7000));
+}
+function nebenZyklus(){
+  if(!CFG.doppel || !S || !S.farbe) return;
+  const over=document.getElementById('over');
+  const sicht = CFG.stufe==='leicht'?2000:CFG.stufe==='mittel'?1600:1200;
+  const pause = CFG.stufe==='leicht'?[11000,19000]:CFG.stufe==='mittel'?[8000,15000]:[6000,11000];
+  const d=rnd(50,66), pos=over?freiePosition(d):null;
+  if(pos){
+    const ziel=Math.random()<.45;
+    const farbe = ziel ? S.farbe : pick(FARBEN.filter(f=>f.k!==S.farbe.k));
+    const el=document.createElement('button');
+    el.className='kreis nk';
+    el.style.cssText=`left:${pos.x}px;top:${pos.y}px;width:${d}px;height:${d}px;background:${farbe.c};pointer-events:auto`;
+    if(ziel) S.dual.n++;
+    const t0=Date.now(); let getippt=false;
+    const tipp=ev=>{
+      if(ev.cancelable) ev.preventDefault();
+      if(getippt) return; getippt=true;
+      if(ziel){ S.dual.ok++; S.dual.rt.push(Date.now()-t0); el.style.boxShadow='0 0 0 4px #ffffff'; beep(1100,60); }
+      else { S.dual.fehl++; S.dual.n++; el.style.background='#33262c'; beep(220,150); buzz(60); }
+      el.style.opacity='.4';
+    };
+    el.addEventListener('pointerdown',tipp);
+    el.addEventListener('click',tipp);
+    over.appendChild(el);
+    later(()=>el.remove(), sicht);
+    later(nebenZyklus, rnd(pause[0],pause[1]));
+  } else {
+    later(nebenZyklus, 1200);
+  }
+}
+let sensorOK=false, sensorInfo='';
+function sensorPruefen(cb){
+  if(typeof DeviceOrientationEvent==='undefined'){
+    sensorInfo='Dieses Gerät meldet keinen Lagesensor.'; return cb(false);
+  }
+  const horchen=()=>{
+    let bekommen=false;
+    const probe=e=>{ if(e.beta!==null||e.gamma!==null||e.alpha!==null) bekommen=true; };
+    window.addEventListener('deviceorientation',probe);
+    setTimeout(()=>{
+      window.removeEventListener('deviceorientation',probe);
+      if(!bekommen) sensorInfo='Der Sensor sendet keine Daten. Das passiert in eingebetteten Vorschaufenstern. Öffne die Anwendung direkt in Safari über die eigene Adresse.';
+      cb(bekommen);
+    },1000);
+  };
+  if(typeof DeviceOrientationEvent.requestPermission==='function'){
+    try{
+      DeviceOrientationEvent.requestPermission().then(a=>{
+        if(a==='granted') horchen();
+        else { sensorInfo='Die Freigabe wurde abgelehnt. Unter Einstellungen, Safari, Bewegung und Ausrichtung lässt sie sich wieder erlauben.'; cb(false); }
+      }).catch(()=>{ sensorInfo='Die Freigabe konnte nicht angefordert werden. Das gelingt nur in Safari über eine Adresse mit https.'; cb(false); });
+    }catch(e){ sensorInfo='Die Freigabe konnte nicht angefordert werden.'; cb(false); }
+  } else horchen();
+}
+function renderSteuern(){
+  clearTimers(); keyMode=null;
+  if(sensorOK) return steuerRunde(true);
+  view.innerHTML=`
+    <div class="card">
+      <div class="qhead"><span class="tag">STEUERN</span><span class="tclock mono">BLOCK ${S.block}/${CFG.bloecke}</span></div>
+      <p class="question">Der Punkt wird durch Neigen des Geräts in der Mitte gehalten.</p>
+      <p class="sub" style="margin-top:10px">Dafür wird der Lagesensor benötigt. Die Freigabe erfolgt einmal pro Sitzung.</p>
+      <div id="shinweis"></div>
+      <button class="btn" id="perm">SENSOR AKTIVIEREN</button>
+      <button class="btn ghost" id="finger">MIT FINGER STEUERN</button>
+    </div>`;
+  document.getElementById('finger').addEventListener('click',()=>steuerRunde(false));
+  document.getElementById('perm').addEventListener('click',()=>{
+    const btn=document.getElementById('perm');
+    btn.textContent='PRÜFE SENSOR'; btn.disabled=true;
+    sensorPruefen(ok=>{
+      sensorOK=ok;
+      if(ok) return steuerRunde(true);
+      const h=document.getElementById('shinweis');
+      if(h) h.innerHTML=`<div class="fb no" style="margin-top:12px"><div class="verdict">KEIN SENSORSIGNAL</div><p class="tip">${sensorInfo}</p></div>`;
+      btn.textContent='ERNEUT VERSUCHEN'; btn.disabled=false;
+    });
+  });
+}
+function steuerRunde(mitSensor){
+  clearTimers(); keyMode=null;
+  const dauer = CFG.stufe==='leicht'?20:CFG.stufe==='mittel'?30:40;
+  const stoer = CFG.stufe==='leicht'?280:CFG.stufe==='mittel'?450:720;
+  const zone  = CFG.stufe==='leicht'?48:CFG.stufe==='mittel'?40:33;
+  view.innerHTML=`
+    <div class="card">
+      <div class="qhead"><span class="tag">STEUERN</span><span class="tclock mono">BLOCK ${S.block}/${CFG.bloecke}</span></div>
+      <p class="question">Punkt ${mitSensor?'durch Neigen des Geräts':'mit dem Finger'} im Ring halten.</p>
+      <div class="steuerfeld" id="sf">
+        <div class="gitter" style="left:0;top:50%;width:100%;height:1px"></div>
+        <div class="gitter" style="left:50%;top:0;width:1px;height:100%"></div>
+        <div class="ziel" id="ziel" style="width:${zone*2}px;height:${zone*2}px"></div>
+        <div class="punkt" id="pt"></div>
+      </div>
+      <div class="zaehler"><span id="s1">0 Prozent im Ring</span><span id="s0">${mitSensor?'Sensor bereit':'Fingersteuerung'}</span><span id="s2">${dauer} s</span></div>
+      <div class="tbar"><span id="tbf" style="width:100%"></span></div>
+    </div>
+    <div id="fbHost"></div>`;
+  const feld=document.getElementById('sf'), pt=document.getElementById('pt');
+  let x=0,y=0,vx=0,vy=0,dx=0,dy=0;
+  let gx=0,gy=0,beta0=null, ticks=0, drin=0, summe=0, maxAb=0;
+  let fx=null, fy=null;
+  let ereignisse=0;
+  const lage=e=>{
+    if(e.beta===null&&e.gamma===null) return;
+    ereignisse++;
+    if(beta0===null) beta0=e.beta||0;
+    gx=Math.max(-35,Math.min(35, e.gamma||0));
+    gy=Math.max(-35,Math.min(35, (e.beta||0)-beta0));
+  };
+  if(mitSensor) window.addEventListener('deviceorientation',lage);
+  const finger=e=>{ const r=feld.getBoundingClientRect(); fx=e.clientX-r.left-r.width/2; fy=e.clientY-r.top-r.height/2; if(e.cancelable) e.preventDefault(); };
+  feld.addEventListener('pointerdown',finger);
+  feld.addEventListener('pointermove',finger);
+  feld.addEventListener('pointerup',()=>{fx=null;fy=null;});
+  const t0=Date.now();
+  tickId=setInterval(()=>{
+    const r=feld.getBoundingClientRect();
+    const hw=Math.max(40,r.width/2-14), hh=Math.max(40,r.height/2-14), dt=.04;
+    dx += (Math.random()-.5)*stoer*dt; dy += (Math.random()-.5)*stoer*dt;
+    dx*=.985; dy*=.985;
+    let ax=dx, ay=dy;
+    if(mitSensor){ ax += gx*4.5; ay += gy*4.5; }
+    if(fx!==null){ ax += (fx-x)*1.4-vx*1.2; ay += (fy-y)*1.4-vy*1.2; }
+    vx=(vx+ax*dt)*.955; vy=(vy+ay*dt)*.955;
+    x+=vx*dt; y+=vy*dt;
+    if(x<-hw){x=-hw;vx=0;} if(x>hw){x=hw;vx=0;}
+    if(y<-hh){y=-hh;vy=0;} if(y>hh){y=hh;vy=0;}
+    pt.style.transform=`translate(${x}px,${y}px)`;
+    const ab=Math.sqrt(x*x+y*y);
+    ticks++; summe+=ab; if(ab>maxAb) maxAb=ab;
+    const im=ab<=zone; if(im) drin++;
+    pt.classList.toggle('drin',im);
+    const verstrichen=(Date.now()-t0)/1000;
+    if(mitSensor){
+      const s0=document.getElementById('s0');
+      if(ereignisse>0) s0.textContent='Neigung '+Math.round(gx)+' quer, '+Math.round(gy)+' längs';
+      else if(verstrichen>2.5){ mitSensor=false; s0.textContent='kein Sensorsignal, mit dem Finger steuern'; }
+    }
+    const rest=Math.max(0,dauer-verstrichen);
+    document.getElementById('tbf').style.width=(rest/dauer*100)+'%';
+    document.getElementById('s1').textContent=Math.round(drin/ticks*100)+' Prozent im Ring';
+    document.getElementById('s2').textContent=rest.toFixed(0)+' s';
+    if(rest<=0) ende();
+  },40);
+  const ende=()=>{
+    clearTimers();
+    if(mitSensor) window.removeEventListener('deviceorientation',lage);
+    const p=Math.round(drin/Math.max(1,ticks)*100);
+    const c=S.cat.steuern; c.n+=10; c.ok+=Math.round(p/10);
+    const gut=p>=80;
+    if(gut){ S.streak++; S.best=Math.max(S.best,S.streak); beep(1050,90); } else S.streak=0;
+    document.getElementById('fbHost').innerHTML=`
+      <div class="fb ${gut?'ok':'no'}">
+        <div class="verdict">${gut?'RUHIG GEHALTEN':'AUSWERTUNG'}</div>
+        <div class="sol">${p} Prozent der Zeit im Ring</div>
+        <ul class="weg">
+          <li><b>Mittlere Abweichung</b>  ${Math.round(summe/Math.max(1,ticks))} Bildpunkte vom Mittelpunkt</li>
+          <li><b>Größte Abweichung</b>  ${Math.round(maxAb)} Bildpunkte</li>
+          <li><b>Ringradius</b>  ${zone} Bildpunkte bei Stufe ${CFG.stufe}</li>
+        </ul>
+        <p class="tip">Kleine, frühe Korrekturen halten den Punkt ruhiger als große Ausgleichsbewegungen.</p>
+      </div>
+      <button class="btn" id="weiter">WEITER</button>`;
+    warteAufWeiter(nextInBlock);
+  };
+}
+function renderReaktion(){
+  clearTimers(); keyMode=null; slot.classList.remove('hidden');
+  const anzahl = CFG.stufe==='leicht'?10:CFG.stufe==='mittel'?14:18;
+  const sicht  = CFG.stufe==='leicht'?1200:CFG.stufe==='mittel'?880:680;
+  const pause  = CFG.stufe==='leicht'?[420,780]:CFG.stufe==='mittel'?[280,620]:[180,460];
+  let i=0, treffer=0, fehl=0, verpasst=0, ziele=0; const rts=[];
+  view.innerHTML=`
+    <div class="card">
+      <div class="qhead"><span class="tag">REAKTION</span><span class="tclock mono">BLOCK ${S.block}/${CFG.bloecke}</span></div>
+      <p class="question">Nur Kreise in der gemerkten Farbe antippen.</p>
+      <div class="feld" id="feld"></div>
+      <div class="zaehler"><span id="z1">0 Treffer</span><span id="z2">0 Fehlgriffe</span></div>
+      <div class="tbar"><span id="tbf" style="width:0%"></span></div>
+    </div>
+    <div id="fbHost"></div>`;
+  const feld=document.getElementById('feld');
+  const zeige=()=>{
+    if(i>=anzahl) return ende();
+    i++;
+    document.getElementById('tbf').style.width=Math.round(i/anzahl*100)+'%';
+    const ziel=Math.random()<.42;
+    const farbe = ziel ? S.farbe : pick(FARBEN.filter(f=>f.k!==S.farbe.k));
+    if(ziel) ziele++;
+    const d=rnd(58,78), W=feld.clientWidth||320, H=feld.clientHeight||260;
+    const el=document.createElement('button');
+    el.className='kreis';
+    el.style.cssText=`left:${rnd(4,Math.max(6,W-d-4))}px;top:${rnd(4,Math.max(6,H-d-4))}px;width:${d}px;height:${d}px;background:${farbe.c}`;
+    const t0=Date.now(); let getippt=false;
+    const tipp=ev=>{
+      if(ev.cancelable) ev.preventDefault();
+      if(getippt) return; getippt=true;
+      if(ziel){ treffer++; rts.push(Date.now()-t0); el.style.boxShadow='0 0 0 4px #ffffff'; beep(1100,60); }
+      else { fehl++; el.style.background='#33262c'; beep(220,150); buzz(60); }
+      el.style.opacity='.4';
+      document.getElementById('z1').textContent=treffer+' Treffer';
+      document.getElementById('z2').textContent=fehl+' Fehlgriffe';
+    };
+    el.addEventListener('pointerdown',tipp);
+    el.addEventListener('click',tipp);
+    feld.appendChild(el);
+    later(()=>{
+      if(!getippt&&ziel) verpasst++;
+      el.remove();
+      later(zeige, rnd(pause[0],pause[1]));
+    }, sicht);
+  };
+  const ende=()=>{
+    clearTimers();
+    const c=S.cat.reaktion;
+    c.n += ziele+fehl; c.ok += treffer;
+    rts.forEach(t=>{ S.rt.push(t); c.rt.push(t); });
+    const sauber = treffer===ziele && fehl===0;
+    if(sauber){ S.streak++; S.best=Math.max(S.best,S.streak); beep(1050,90); } else S.streak=0;
+    document.getElementById('fbHost').innerHTML=`
+      <div class="fb ${sauber?'ok':'no'}">
+        <div class="verdict">${sauber?'FEHLERFREI':'AUSWERTUNG'}</div>
+        <div class="sol">${treffer} von ${ziele} · ${rts.length?med(rts):0} ms</div>
+        <ul class="weg">
+          <li><b>Treffer</b>  ${treffer} von ${ziele} Zielen in ${S.farbe.n}</li>
+          <li><b>Fehlgriffe</b>  ${fehl} Kreise in falscher Farbe angetippt</li>
+          <li><b>Verpasst</b>  ${verpasst} Ziele nicht getroffen</li>
+          <li><b>Reaktionszeit</b>  ${rts.length?med(rts)+' Millisekunden im Mittel':'keine Messung'}</li>
+        </ul>
+        <p class="tip">Gültig ist die zuletzt angesagte Farbe. Fehlgriffe zählen wie verpasste Ziele.</p>
+      </div>
+      <button class="btn" id="weiter">WEITER</button>`;
+    warteAufWeiter(nextInBlock);
+  };
+  later(zeige, 700);
+}
+function recallFarbe(next){
+  clearTimers(); keyMode=null; slot.classList.add('hidden'); beep(760,120);
+  view.innerHTML=`
+    <div class="card">
+      <div class="eyebrow">ABFRAGE</div>
+      <h2>Welche Farbe ist aktuell gültig?</h2>
+      <p class="sub">Auswahl antippen.</p>
+      <div class="farbwahl" id="fw">${FARBEN.map(f=>`<button data-v="${f.k}" style="background:${f.c}" aria-label="${f.n}"></button>`).join('')}</div>
+    </div>
+    <div id="fbHost"></div>`;
+  document.getElementById('fw').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b||b.disabled) return;
+    const ok=b.dataset.v===S.farbe.k;
+    S.rf.n++; if(ok){S.rf.ok++;S.streak++;S.best=Math.max(S.best,S.streak);beep(1150,140);}
+    else {S.streak=0;beep(200,260);buzz(120);}
+    document.getElementById('fw').querySelectorAll('button').forEach(x=>{
+      x.disabled=true;
+      x.style.boxShadow = x.dataset.v===S.farbe.k ? '0 0 0 4px var(--green)' : (x===b?'0 0 0 4px var(--red)':'none');
+    });
+    document.getElementById('fbHost').innerHTML=`
+      <div class="fb ${ok?'ok':'no'}">
+        <div class="verdict">${ok?'RICHTIG':'FALSCH'}</div>
+        <div class="sol">Gültig ist ${S.farbe.n}</div>
+        <ul class="weg">${S.ftrace.map(w=>`<li>${w}</li>`).join('')}</ul>
+      </div>
+      <button class="btn" id="weiter">WEITER</button>`;
+    warteAufWeiter(next);
+  });
+}
+
+/* =========================================================
+   Merkinhalt Instrumente
+   ========================================================= */
+const FELD={
+  alt:{label:'HÖHE', kurz:'Höhe', einheit:'Fuß', gauge:v=>svgAlt(v)},
+  ias:{label:'FAHRT', kurz:'Fahrt', einheit:'Knoten', gauge:v=>svgIas(v)},
+  hdg:{label:'KURS', kurz:'Kurs', einheit:'Grad', gauge:v=>svgHsi(v)}
+};
+function feldNamen(){ const n=S.felder.map(f=>FELD[f].kurz); return n.length<2?n[0]:n.slice(0,-1).join(', ')+' und '+n[n.length-1]; }
+function merkZeit(){ return CFG.stufe==='leicht'?12:CFG.stufe==='mittel'?9:7; }
+function randWerte(){
+  const w={};
+  w.alt = CFG.stufe==='leicht'?rnd(2,19)*500 : CFG.stufe==='mittel'?rnd(2,39)*100 : Math.min(19900, rnd(2,39)*100+rnd(0,9)*1000);
+  w.ias = CFG.stufe==='leicht'?rnd(2,9)*20 : rnd(6,19)*10;
+  w.hdg = CFG.stufe==='leicht'?rnd(1,12)*30 : rnd(1,36)*10;
+  return w;
+}
+function wertePanel(w){ return `<div class="panel">${S.felder.map(f=>FELD[f].gauge(w[f])).join('')}</div>`; }
+function runSteps(steps,next){ const go=i=>i>=steps.length?next():steps[i](()=>go(i+1)); go(0); }
+function zeigeAnzeige(eyebrow,next){
+  if(CFG.ablese) return showWerteKontrolle(eyebrow,S.werte,next);
+  showWerte(eyebrow,S.werte,feldNamen()+' ablesen und merken.',merkZeit(),next);
+}
+function showWerteKontrolle(eyebrow,w,next){
+  clearTimers(); keyMode='eingabe'; slot.classList.add('hidden'); beep(960,160); buzz(30);
+  const secs=merkZeit()+10;
+  view.innerHTML=`
+    <div class="card">
+      <div class="eyebrow">${eyebrow}</div>
+      ${wertePanel(w)}
+      <p class="hold" style="text-align:center">${feldNamen()} ablesen, eintragen und merken.</p>
+      ${S.felder.map(f=>`<div class="frow"><label>${FELD[f].label}</label><input id="k_${f}" type="text" inputmode="numeric" autocomplete="off" placeholder="?"><span>${FELD[f].einheit}</span></div>`).join('')}
+      <button class="btn" id="ok">BESTÄTIGEN</button>
+      <div class="tbar" id="tb"><span id="tbf"></span></div>
+    </div>
+    <div id="fbHost"></div>`;
+  let fertig=false;
+  const send=()=>{
+    if(fertig) return; fertig=true;
+    clearTimers(); keyMode=null;
+    let alle=true;
+    const zeilen=S.felder.map(f=>{
+      const el=document.getElementById('k_'+f), raw=(el.value||'').trim();
+      let n=parseFloat(raw.replace(',','.'));
+      if(f==='hdg'&&!isNaN(n)) n=norm(n);
+      const soll=f==='hdg'?norm(w[f]):w[f];
+      const ok=!isNaN(n)&&Math.abs(n-soll)<0.001;
+      S.ab.n++; if(ok) S.ab.ok++; else alle=false;
+      el.disabled=true;
+      return `<b>${FELD[f].label}</b>  ${f==='hdg'?pad3(soll):soll} ${FELD[f].einheit}${ok?', korrekt':', abgelesen '+(raw===''?'keine':raw)}`;
+    });
+    document.getElementById('ok').disabled=true;
+    beep(alle?1050:240, alle?90:180);
+    document.getElementById('fbHost').innerHTML=`
+      <div class="fb ${alle?'ok':'no'}">
+        <div class="verdict">${alle?'ABLESUNG KORREKT':'ABLESEFEHLER'}</div>
+        <div class="sol">${S.felder.map(f=>(f==='hdg'?pad3(norm(w[f])):w[f])+' '+FELD[f].einheit).join('  ·  ')}</div>
+        <ul class="weg">${zeilen.map(z=>`<li>${z}</li>`).join('')}</ul>
+        <p class="tip">Diese Werte sind ab jetzt zu merken.</p>
+      </div>
+      <button class="btn" id="weiter">WEITER</button>`;
+    warteAufWeiter(next);
+  };
+  document.getElementById('ok').addEventListener('click',send);
+  S.felder.forEach(f=>document.getElementById('k_'+f).addEventListener('keydown',e=>{if(e.key==='Enter')send();}));
+  setTimeout(()=>{const el=document.getElementById('k_'+S.felder[0]); if(el) el.focus();},60);
+  const fill=document.getElementById('tbf'), bar=document.getElementById('tb'), t0=Date.now();
+  tickId=setInterval(()=>{
+    const p=1-(Date.now()-t0)/(secs*1000);
+    fill.style.width=Math.max(0,p*100)+'%';
+    if(p<.25) bar.classList.add('low');
+    if(p<=0) send();
+  },100);
+}
+function showWerte(eyebrow,w,text,secs,next,danger){
+  clearTimers(); keyMode='hold'; slot.classList.add('hidden');
+  beep(danger?320:960,160); buzz(danger?[40,60,40]:30);
+  view.innerHTML=`
+    <div class="card ${danger?'warn':''}" style="text-align:center">
+      <div class="eyebrow">${eyebrow}</div>
+      ${wertePanel(w)}
+      <p class="hold">${text}</p>
+      <div class="countdown mono" id="cd">${secs}</div>
+    </div>
+    <button class="btn ghost" id="skip">VERSTANDEN</button>`;
+  let left=secs; const el=document.getElementById('cd');
+  const done=()=>{clearTimers();keyMode=null;next();};
+  tickId=setInterval(()=>{left--;if(el)el.textContent=left;if(left<=0)done();},1000);
+  document.getElementById('skip').addEventListener('click',done);
+  showLetter.done=done;
+}
+
+/* =========================================================
+   Registry
+   ========================================================= */
+const GEN={
+  dreisatz:{label:'DREISATZ', hint:'Proportional', fn:genDreisatz},
+  nav:{label:'NAVIGATION', hint:'360 Grad', fn:genNav},
+  flug:{label:'FLUGRECHNEN', hint:'Zeit, Sprit, Sinkrate', fn:genFlug},
+  instr:{label:'INSTRUMENTE', hint:'Ablesen', fn:genInstr},
+  reihe:{label:'ZAHLENREIHEN', hint:'Logik', fn:genReihe},
+  englisch:{label:'ENGLISCH', hint:'Vokabeln und Grammatik', fn:genEnglisch},
+  reaktion:{label:'REAKTION', hint:'Farbe antippen', fn:null},
+  steuern:{label:'STEUERN', hint:'Punkt in der Mitte halten', fn:null}
+};
+const KEYS=Object.keys(GEN);
+const DICHTE={wenig:[1,2], normal:[2,4], viel:[4,6]};
+
+/* =========================================================
+   Hauptmenü
+   ========================================================= */
+function konfText(){
+  const merk=[];
+  if(CFG.merk.buchstabe) merk.push('Buchstabe');
+  if(CFG.merk.farbe) merk.push('Farbe');
+  if(CFG.merk.instrument) merk.push('Anzeige');
+  const arten=KEYS.filter(k=>CFG.typen[k]).length;
+  const zeit=CFG.zeit?CFG.zeit+' s je Aufgabe':'ohne Zeitvorgabe';
+  return `<b>${CFG.stufe.toUpperCase()}</b> · ${CFG.bloecke} Blöcke · ${zeit}<br>
+    Merken: ${merk.join(', ')} · ${arten} Aufgabenarten${CFG.doppel?' · Doppelaufgabe':''}${CFG.ablese?' · Ablesekontrolle':''}`;
+}
+function renderMenu(){
+  clearTimers(); keyMode=null; contFn=null; S=null;
+  slot.classList.add('hidden'); menuBtn.classList.add('hidden'); prog.style.width='0%';
+  view.innerHTML=`
+    <div class="eyebrow">ARBEITSGEDÄCHTNIS UNTER STÖRLAST</div>
+    <h1>Memory Ops</h1>
+    <p class="sub" style="margin-top:8px">Kennung, Farbe und Instrumentenwerte merken, während Aufgaben aus dem Auswahlverfahren ablenken. In unregelmäßigen Abständen wird der Speicherinhalt abgefragt.</p>
+
+    <div class="card">
+      <div class="opt">Aktuelle Einstellung</div>
+      <p class="konf" id="konf">${konfText()}</p>
+    </div>
+
+    <button class="btn" id="go">LAUF STARTEN</button>
+    <div class="row" style="margin-top:10px">
+      <button class="chip" id="tog">EINSTELLUNGEN</button>
+      <button class="chip" id="hist">VERLAUF</button>
+    </div>
+
+    <div id="opts" class="hidden">
+      <div class="card">
+        <div class="opt">Stufe</div>
+        <div class="row" id="rSt">
+          ${[['leicht','LEICHT'],['mittel','MITTEL'],['schwer','SCHWER']].map(([v,l])=>`<button class="chip ${CFG.stufe===v?'on':''}" data-v="${v}">${l}</button>`).join('')}
+        </div>
+        <p class="sub" style="margin-top:10px;font-size:13px" id="stufeInfo"></p>
+        <div class="opt" style="margin-top:16px">Blöcke pro Lauf</div>
+        <div class="row" id="rBl">${[3,5,8,12,16].map(n=>`<button class="chip ${CFG.bloecke===n?'on':''}" data-v="${n}">${n}</button>`).join('')}</div>
+        <div class="opt" style="margin-top:16px">Aufgaben je Block</div>
+        <div class="row" id="rDi">
+          ${[['wenig','WENIG'],['normal','NORMAL'],['viel','VIEL']].map(([v,l])=>`<button class="chip ${CFG.dichte===v?'on':''}" data-v="${v}">${l}<small>${DICHTE[v][0]} bis ${DICHTE[v][1]}</small></button>`).join('')}
+        </div>
+        <div class="opt" style="margin-top:16px">Zeit pro Aufgabe</div>
+        <div class="row" id="rZt">${[[20,'20 s'],[30,'30 s'],[45,'45 s'],[0,'OHNE']].map(([v,l])=>`<button class="chip ${CFG.zeit===v?'on':''}" data-v="${v}">${l}</button>`).join('')}</div>
+      </div>
+
+      <div class="card">
+        <div class="opt">Merkinhalt</div>
+        <div class="grid2" id="rMk">
+          <button class="chip ${CFG.merk.buchstabe?'on':''}" data-v="buchstabe">BUCHSTABE<small>Kennung merken</small></button>
+          <button class="chip ${CFG.merk.instrument?'on':''}" data-v="instrument">INSTRUMENTE<small>Anzeige merken</small></button>
+          <button class="chip ${CFG.merk.farbe?'on':''}" data-v="farbe">FARBE<small>Farbe merken und abfragen</small></button>
+        </div>
+        <div class="opt" style="margin-top:16px">Aufgabenarten</div>
+        <div class="grid2" id="rTy">
+          ${KEYS.map(k=>`<button class="chip ${CFG.typen[k]?'on':''}" data-v="${k}">${GEN[k].label}<small>${GEN[k].hint}</small></button>`).join('')}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="opt">Doppelaufgabe</div>
+        <div class="row" id="rDo">
+          <button class="chip ${CFG.doppel?'on':''}" data-v="1">AN</button>
+          <button class="chip ${CFG.doppel?'':'on'}" data-v="0">AUS</button>
+        </div>
+        <p class="sub" style="margin-top:8px;font-size:12px">Während aller Aufgaben tauchen vereinzelt Kreise auf, in Abständen von mehreren Sekunden. Nur die in der gemerkten Farbe werden nebenbei angetippt.</p>
+        <div class="opt" style="margin-top:16px">Ablesekontrolle</div>
+        <div class="row" id="rAb">
+          <button class="chip ${CFG.ablese?'on':''}" data-v="1">AN</button>
+          <button class="chip ${CFG.ablese?'':'on'}" data-v="0">AUS</button>
+        </div>
+        <p class="sub" style="margin-top:8px;font-size:12px">Die abgelesenen Werte werden vor dem Merken eingetragen. Trennt Ablesefehler von Merkfehlern.</p>
+        <div class="opt" style="margin-top:16px">Ton</div>
+        <div class="row" id="rTo">
+          <button class="chip ${CFG.ton?'on':''}" data-v="1">AN</button>
+          <button class="chip ${CFG.ton?'':'on'}" data-v="0">AUS</button>
+        </div>
+      </div>
+      <p class="sub" style="text-align:center;font-size:12px;margin-top:12px">Tastatureingabe wird unterstützt. Enter bestätigt und blättert weiter.</p>
+    </div>`;
+  const info={
+    leicht:'Glatte Kurse und Höhen, ausschließlich proportionaler Dreisatz. Jeder Wechsel wird angesagt.',
+    mittel:'Zusätzlich umgekehrt proportionale Aufgaben, feinere Kursschritte, gelegentlich Versatz des Buchstabens im Alphabet.',
+    schwer:'Beliebige Kurse, Wechsel auch innerhalb eines Blocks, Störsignale, bei jeder Abfrage beide Speicherinhalte.'
+  };
+  const setInfo=()=>document.getElementById('stufeInfo').textContent=info[CFG.stufe];
+  const auf=()=>document.getElementById('konf').innerHTML=konfText();
+  setInfo();
+  const bind=(id,fn)=>document.getElementById(id).addEventListener('click',e=>{
+    const b=e.target.closest('.chip'); if(b){ fn(b); auf(); }
+  });
+  bind('rBl',b=>{CFG.bloecke=+b.dataset.v;markOne('rBl',b);});
+  bind('rDi',b=>{CFG.dichte=b.dataset.v;markOne('rDi',b);});
+  bind('rZt',b=>{CFG.zeit=+b.dataset.v;markOne('rZt',b);});
+  bind('rDo',b=>{CFG.doppel=b.dataset.v==='1';markOne('rDo',b);});
+  bind('rAb',b=>{CFG.ablese=b.dataset.v==='1';markOne('rAb',b);});
+  bind('rTo',b=>{CFG.ton=b.dataset.v==='1';markOne('rTo',b);if(CFG.ton)beep(880,90);});
+  bind('rSt',b=>{CFG.stufe=b.dataset.v;markOne('rSt',b);setInfo();});
+  bind('rMk',b=>{
+    const k=b.dataset.v, an=['buchstabe','instrument','farbe'].filter(x=>CFG.merk[x]);
+    if(CFG.merk[k]&&an.length<2) return;
+    CFG.merk[k]=!CFG.merk[k]; b.classList.toggle('on',CFG.merk[k]);
+  });
+  bind('rTy',b=>{
+    const k=b.dataset.v, aktiv=KEYS.filter(x=>CFG.typen[x]);
+    if(CFG.typen[k]&&aktiv.length<2) return;
+    CFG.typen[k]=!CFG.typen[k]; b.classList.toggle('on',CFG.typen[k]);
+  });
+  document.getElementById('go').addEventListener('click',startSession);
+  document.getElementById('hist').addEventListener('click',renderVerlauf);
+  document.getElementById('tog').addEventListener('click',e=>{
+    const o=document.getElementById('opts'), zu=o.classList.toggle('hidden');
+    e.target.closest('.chip').classList.toggle('on',!zu);
+    if(!zu) o.scrollIntoView({block:'start',behavior:'smooth'});
+  });
+}
+function markOne(id,b){
+  document.getElementById(id).querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  b.classList.add('on');
+}
+
+/* =========================================================
+   Lauf
+   ========================================================= */
+function startSession(){
+  S={letter:pick(AZ), block:0, tasksLeft:0, rc:{ok:0,n:0}, ri:{ok:0,n:0}, ab:{ok:0,n:0}, rf:{ok:0,n:0}, dual:{ok:0,n:0,fehl:0,rt:[]}, cat:{},
+     streak:0, best:0, trace:[], wtrace:[], ftrace:[], werte:null, farbe:null, t0:Date.now(), rt:[], rtAbruf:[],
+     felder: CFG.stufe==='schwer'?['alt','ias','hdg']:['alt','ias']};
+  KEYS.forEach(k=>S.cat[k]={ok:0,n:0,rt:[]});
+  S.trace=[`<b>1</b>  Ausgangsbuchstabe <b>${S.letter}</b>`];
+  const boxen=[];
+  if(CFG.merk.buchstabe) boxen.push('B');
+  if(farbeAktiv()) boxen.push('F');
+  if(CFG.merk.instrument) S.felder.forEach(f=>boxen.push(FELD[f].label.charAt(0)));
+  slot.innerHTML='<span class="lbl">SPEICHER</span>'+boxen.map(b=>`<span class="box">${b}</span>`).join('');
+  menuBtn.classList.remove('hidden');
+  const steps=[];
+  if(CFG.merk.buchstabe) steps.push(cb=>showLetter('AKTIVER BUCHSTABE',S.letter,'Buchstabe merken. Gültig bis zur nächsten Ansage.',4,cb));
+  if(farbeAktiv()) steps.push(cb=>{ S.farbe=pick(FARBEN); S.ftrace=[`<b>1</b>  Ausgangsfarbe <b>${S.farbe.n}</b>`];
+    showFarbe('AKTIVE FARBE',S.farbe,'Farbe merken. Nur Kreise in dieser Farbe werden angetippt.',4,cb); });
+  if(CFG.merk.instrument) steps.push(cb=>{ S.werte=randWerte(); S.wtrace=[`<b>1</b>  Ausgangsanzeige`];
+    zeigeAnzeige('ANZEIGE MERKEN',cb); });
+  runSteps(steps,startBlock);
+}
+function startBlock(){
+  S.block++;
+  if(S.block>CFG.bloecke) return renderResults();
+  prog.style.width=Math.round((S.block-1)/CFG.bloecke*100)+'%';
+  const dd=DICHTE[CFG.dichte]; S.tasksLeft=rnd(dd[0],dd[1]);
+  nextInBlock();
+}
+function nextInBlock(){
+  if(S.tasksLeft<=0) return renderRecall();
+  S.tasksLeft--;
+  if(CFG.stufe==='schwer'&&CFG.dichte!=='wenig'&&Math.random()<.2) return renderEvent(renderTask);
+  renderTask();
+}
+function warteAufWeiter(next){
+  keyMode='weiter';
+  contFn=()=>{contFn=null;keyMode=null;next();};
+  const b=document.getElementById('weiter');
+  if(b){ b.addEventListener('click',()=>{if(contFn)contFn();});
+         b.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+}
+
+function showLetter(eyebrow,letter,hold,secs,next,danger){
+  clearTimers(); keyMode='hold'; slot.classList.add('hidden');
+  beep(danger?320:880,160); buzz(danger?[40,60,40]:30);
+  view.innerHTML=`
+    <div class="card letterstage ${danger?'warn':''}">
+      <div class="eyebrow">${eyebrow}</div>
+      <div class="bigletter mono">${letter}</div>
+      <div class="nato">${NATO[letter]}</div>
+      <p class="hold">${hold}</p>
+      <div class="countdown mono" id="cd">${secs}</div>
+    </div>
+    <button class="btn ghost" id="skip">VERSTANDEN</button>`;
+  let left=secs; const el=document.getElementById('cd');
+  const done=()=>{clearTimers();keyMode=null;next();};
+  tickId=setInterval(()=>{left--;if(el)el.textContent=left;if(left<=0)done();},1000);
+  document.getElementById('skip').addEventListener('click',done);
+  showLetter.done=done;
+}
+
+function renderEvent(next){
+  const arten=[];
+  if(CFG.merk.buchstabe) arten.push('b');
+  if(CFG.merk.instrument) arten.push('i');
+  if(farbeAktiv()) arten.push('f');
+  const wahl=pick(arten);
+  if(wahl==='f'){
+    if(CFG.stufe==='schwer'&&Math.random()<.28){
+      let st=pick(FARBEN.filter(f=>f.k!==S.farbe.k));
+      S.ftrace.push(`<b>${S.ftrace.length+1}</b>  ${st.n} war nur eine Störansage`);
+      return showFarbe('STÖRFARBE',st,'Ablenkung ohne Gültigkeit. Die gemerkte Farbe bleibt bestehen.',4,next,true);
+    }
+    S.farbe=pick(FARBEN.filter(f=>f.k!==S.farbe.k));
+    S.ftrace=[`<b>1</b>  Neue Ansage: <b>${S.farbe.n}</b>`];
+    return showFarbe('NEUE AKTIVE FARBE',S.farbe,'Ab jetzt gilt diese Farbe. Die vorherige verfällt.',4,next);
+  }
+  if(wahl==='i'){
+    if(CFG.stufe==='schwer'&&Math.random()<.3){
+      S.wtrace.push(`<b>${S.wtrace.length+1}</b>  Störanzeige ohne Gültigkeit`);
+      return showWerte('STÖRANZEIGE',randWerte(),'Ablenkung ohne Gültigkeit. Die gemerkten Werte bleiben bestehen.',4,next,true);
+    }
+    S.werte=randWerte();
+    S.wtrace=[`<b>1</b>  Anzeige ersetzt`];
+    return zeigeAnzeige('NEUE ANZEIGE',next);
+  }
+  const r=Math.random();
+  if(CFG.stufe!=='leicht'&&r<.35){
+    const step=pick([1,1,2]), dir=Math.random()<.5?1:-1, old=S.letter;
+    S.letter=AZ[((AZ.indexOf(old)+dir*step)%26+26)%26];
+    S.trace.push(`<b>${S.trace.length+1}</b>  ${old} um ${step} ${dir>0?'vor':'zurück'} versetzt ergibt <b>${S.letter}</b>`);
+    clearTimers(); keyMode='hold'; slot.classList.add('hidden'); beep(660,180);
+    view.innerHTML=`
+      <div class="card letterstage">
+        <div class="eyebrow">ANWEISUNG</div>
+        <div class="bigletter mono" style="font-size:56px;letter-spacing:0">${step} ${dir>0?'VOR':'ZURÜCK'}</div>
+        <p class="hold">Gemerkten Buchstaben um ${step} ${step===1?'Stelle':'Stellen'} ${dir>0?'nach vorn':'zurück'} versetzen. Das Ergebnis wird nicht angezeigt.</p>
+        <div class="countdown mono" id="cd">6</div>
+      </div>
+      <button class="btn ghost" id="skip">VERSTANDEN</button>`;
+    let left=6; const el=document.getElementById('cd');
+    const done=()=>{clearTimers();keyMode=null;next();};
+    tickId=setInterval(()=>{left--;if(el)el.textContent=left;if(left<=0)done();},1000);
+    document.getElementById('skip').addEventListener('click',done);
+    showLetter.done=done;
+    return;
+  }
+  if(CFG.stufe==='schwer'&&r<.6){
+    let st=pick(AZ); while(st===S.letter) st=pick(AZ);
+    S.trace.push(`<b>${S.trace.length+1}</b>  ${st} ohne Gültigkeit`);
+    return showLetter('STÖRSIGNAL',st,'Ablenkung ohne Gültigkeit. Der gemerkte Buchstabe bleibt bestehen.',4,next,true);
+  }
+  let neu=pick(AZ); while(neu===S.letter) neu=pick(AZ);
+  S.letter=neu;
+  S.trace=[`<b>1</b>  Neue Ansage: <b>${neu}</b>`];
+  showLetter('NEUER AKTIVER BUCHSTABE',neu,'Neuer Buchstabe gültig. Der vorherige verfällt.',4,next);
+}
+
+function renderTask(){
+  clearTimers();
+  slot.classList.remove('hidden');
+  const aktiv=KEYS.filter(k=>CFG.typen[k]);
+  const art=pick(aktiv);
+  if(art==='reaktion') return renderReaktion();
+  if(art==='steuern') return renderSteuern();
+  const q=GEN[art].fn();
+  const secs=CFG.zeit;
+  keyMode=q.typ==='zahl'?'zahl':'wahl';
+  view.innerHTML=`
+    <div class="card">
+      <div class="qhead">
+        <span class="tag">${GEN[q.art].label}</span>
+        <span class="tclock mono">BLOCK ${S.block}/${CFG.bloecke}</span>
+      </div>
+      <p class="question">${q.frage}</p>
+      ${q.grafik||''}
+      ${q.typ==='zahl'?`
+        <div class="answer">
+          <input id="inp" type="text" inputmode="decimal" autocomplete="off" placeholder="?">
+          <button id="ok">OK</button>
+        </div>
+        <div class="unit">${q.einheit||''}</div>`:`
+        <div class="row ${q.optionen.some(o=>o.length>9)?'stack':''}" style="margin-top:16px">
+          ${q.optionen.map(o=>`<button class="chip" style="font-size:15px;padding:16px 6px" data-v="${o}">${o}</button>`).join('')}
+        </div>`}
+      ${secs?`<div class="tbar" id="tb"><span id="tbf"></span></div>`:''}
+    </div>
+    <div id="fbHost"></div>`;
+
+  const tAuf=Date.now();
+  const finish=val=>{
+    clearTimers();
+    const ok=val!==null&&check(q,val);
+    const c=S.cat[q.art]; c.n++;
+    if(val!==null){ const dt=Date.now()-tAuf; S.rt.push(dt); c.rt.push(dt); }
+    if(ok){c.ok++;S.streak++;S.best=Math.max(S.best,S.streak);beep(1050,90);}
+    else {S.streak=0;beep(240,180);buzz(60);}
+    const soll=q.typ==='zahl'?(q.kurs?pad3(q.loesung):(q.ziffern4?String(q.loesung).padStart(4,'0'):q.loesung)):q.loesung;
+    document.getElementById('fbHost').innerHTML=`
+      <div class="fb ${ok?'ok':'no'}">
+        <div class="verdict">${ok?'RICHTIG':(val===null?'ZEIT ABGELAUFEN':'FALSCH')}</div>
+        <div class="sol">Lösung: ${soll}${q.einheit&&q.typ==='zahl'?' '+q.einheit:''}</div>
+        <ul class="weg">${(q.weg||[]).map(w=>`<li>${w}</li>`).join('')}</ul>
+        <p class="tip">${q.hinweis||''}</p>
+        ${q.loesungsGrafik||''}
+      </div>
+      <button class="btn" id="weiter">WEITER</button>`;
+    document.querySelectorAll('.answer button,.row .chip,.answer input').forEach(b=>b.disabled=true);
+    warteAufWeiter(nextInBlock);
+  };
+
+  if(q.typ==='zahl'){
+    const inp=document.getElementById('inp');
+    const send=()=>{const v=inp.value.trim(); if(v!=='') finish(v);};
+    document.getElementById('ok').addEventListener('click',send);
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter')send();});
+    setTimeout(()=>inp.focus(),60);
+  } else {
+    view.querySelectorAll('.row .chip').forEach(b=>b.addEventListener('click',()=>finish(b.dataset.v)));
+    renderTask.chooseByKey=k=>{
+      const b=[...view.querySelectorAll('.row .chip')].find(x=>!x.disabled&&x.dataset.v[0]===k);
+      if(b) finish(b.dataset.v);
+    };
+  }
+  if(secs){
+    const fill=document.getElementById('tbf'), bar=document.getElementById('tb'), t0=Date.now();
+    tickId=setInterval(()=>{
+      const p=1-(Date.now()-t0)/(secs*1000);
+      fill.style.width=Math.max(0,p*100)+'%';
+      if(p<.25) bar.classList.add('low');
+      if(p<=0) finish(null);
+    },100);
+  }
+  starteNeben();
+}
+function check(q,val){
+  if(q.typ==='wahl') return val===q.loesung;
+  let n=parseFloat(String(val).replace(',','.').replace(':',''));
+  if(isNaN(n)) return false;
+  if(q.kurs) n=norm(n);
+  return Math.abs(n-q.loesung)<0.001;
+}
+
+function renderRecall(){
+  const arten=[];
+  if(CFG.merk.buchstabe) arten.push(recallBuchstabe);
+  if(CFG.merk.farbe) arten.push(recallFarbe);
+  if(CFG.merk.instrument) arten.push(recallWerte);
+  const liste = (arten.length>1 && (CFG.stufe==='schwer'||Math.random()<.4)) ? arten : [pick(arten)];
+  runSteps(liste.map(f=>cb=>f(cb)), afterRecall);
+}
+function afterRecall(){
+  if(S.block>=CFG.bloecke) return renderResults();
+  if(Math.random()<(CFG.stufe==='leicht'?.45:.6)) renderEvent(startBlock);
+  else startBlock();
+}
+function recallBuchstabe(next){
+  clearTimers(); keyMode='recall'; slot.classList.add('hidden'); beep(760,120);
+  view.innerHTML=`
+    <div class="card">
+      <div class="eyebrow">ABFRAGE</div>
+      <h2>Welcher Buchstabe ist aktuell gültig?</h2>
+      <p class="sub">Auswahl antippen oder Taste drücken.</p>
+      <div class="grid" id="g">${AZ.map(l=>`<button data-v="${l}">${l}</button>`).join('')}</div>
+    </div>
+    <div id="fbHost"></div>`;
+  const tAb=Date.now();
+  const answer=l=>{
+    clearTimers(); keyMode=null;
+    S.rtAbruf.push(Date.now()-tAb);
+    const ok=l===S.letter;
+    S.rc.n++;
+    if(ok){S.rc.ok++;S.streak++;S.best=Math.max(S.best,S.streak);beep(1150,140);}
+    else {S.streak=0;beep(200,260);buzz(120);}
+    document.getElementById('g').querySelectorAll('button').forEach(b=>{
+      b.disabled=true;
+      if(b.dataset.v===S.letter){b.style.background='var(--green)';b.style.color='#06180d';}
+      else if(b.dataset.v===l){b.style.background='var(--red)';b.style.color='#1a0505';}
+    });
+    document.getElementById('fbHost').innerHTML=`
+      <div class="fb ${ok?'ok':'no'}">
+        <div class="verdict">${ok?'RICHTIG':'FALSCH'}</div>
+        <div class="sol">Gültig ist ${S.letter} wie ${NATO[S.letter]}</div>
+        <ul class="weg">${S.trace.map(w=>`<li>${w}</li>`).join('')}</ul>
+      </div>
+      <button class="btn" id="weiter">WEITER</button>`;
+    warteAufWeiter(next);
+  };
+  document.getElementById('g').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(b&&!b.disabled) answer(b.dataset.v);
+  });
+  recallBuchstabe.answer=answer;
+}
+function recallWerte(next){
+  clearTimers(); keyMode='eingabe'; slot.classList.add('hidden'); beep(700,140);
+  view.innerHTML=`
+    <div class="card">
+      <div class="eyebrow">ABFRAGE</div>
+      <h2>Welche Werte zeigte die letzte gültige Anzeige?</h2>
+      <p class="sub">Gemerkte Werte eintragen.</p>
+      ${S.felder.map(f=>`<div class="frow"><label>${FELD[f].label}</label><input id="i_${f}" type="text" inputmode="numeric" autocomplete="off" placeholder="?"><span>${FELD[f].einheit}</span></div>`).join('')}
+      <button class="btn" id="ok">BESTÄTIGEN</button>
+    </div>
+    <div id="fbHost"></div>`;
+  const tAb=Date.now(); let fertig=false;
+  const send=()=>{
+    if(fertig) return; fertig=true;
+    clearTimers(); keyMode=null;
+    S.rtAbruf.push(Date.now()-tAb);
+    let alle=true;
+    const zeilen=S.felder.map(f=>{
+      const raw=(document.getElementById('i_'+f).value||'').trim();
+      let n=parseFloat(raw.replace(',','.'));
+      if(f==='hdg'&&!isNaN(n)) n=norm(n);
+      const soll=f==='hdg'?norm(S.werte[f]):S.werte[f];
+      const ok=!isNaN(n)&&Math.abs(n-soll)<0.001;
+      S.ri.n++; if(ok) S.ri.ok++; else alle=false;
+      const zeig=f==='hdg'?pad3(soll):soll;
+      return `<b>${FELD[f].label}</b>  ${zeig} ${FELD[f].einheit}${ok?', korrekt':', Eingabe '+(raw===''?'keine':raw)}`;
+    });
+    if(alle){S.streak++;S.best=Math.max(S.best,S.streak);beep(1150,140);}
+    else {S.streak=0;beep(200,260);buzz(120);}
+    S.felder.forEach(f=>document.getElementById('i_'+f).disabled=true);
+    document.getElementById('ok').disabled=true;
+    document.getElementById('fbHost').innerHTML=`
+      <div class="fb ${alle?'ok':'no'}">
+        <div class="verdict">${alle?'ALLE WERTE KORREKT':'ABWEICHUNG'}</div>
+        <div class="sol">${S.felder.map(f=>(f==='hdg'?pad3(norm(S.werte[f])):S.werte[f])+' '+FELD[f].einheit).join('  ·  ')}</div>
+        <ul class="weg">${zeilen.concat(S.wtrace).map(w=>`<li>${w}</li>`).join('')}</ul>
+        ${wertePanel(S.werte)}
+      </div>
+      <button class="btn" id="weiter">WEITER</button>`;
+    warteAufWeiter(next);
+  };
+  document.getElementById('ok').addEventListener('click',send);
+  S.felder.forEach(f=>document.getElementById('i_'+f).addEventListener('keydown',e=>{if(e.key==='Enter')send();}));
+  setTimeout(()=>{const el=document.getElementById('i_'+S.felder[0]); if(el) el.focus();},60);
+}
+
+function bewertung(){
+  const q=o=>o.n?o.ok/o.n:null;
+  const merk={ok:S.rc.ok+S.ri.ok+S.rf.ok, n:S.rc.n+S.ri.n+S.rf.n};
+  let aufg={ok:0,n:0}; KEYS.forEach(k=>{aufg.ok+=S.cat[k].ok; aufg.n+=S.cat[k].n;});
+  const M=q(merk), A=q(aufg), D=q(S.dual);
+  let g=0, w=0;
+  const add=(v,gew)=>{ if(v!==null){ g+=v*gew; w+=gew; } };
+  add(M, D!==null?.55:.62); add(A, D!==null?.30:.38); add(D,.15);
+  const Q = w?g/w:0;
+
+  const rt=med(S.rt)/1000;
+  const T = rt>0 ? Math.min(1.4, Math.max(.7, 1+.4*(1-rt/15))) : 1;
+
+  const fStufe={leicht:1, mittel:1.25, schwer:1.55}[CFG.stufe];
+  const fZeit={0:1, 45:1.05, 30:1.12, 20:1.2}[CFG.zeit]||1;
+  let el=0;
+  if(CFG.merk.buchstabe) el++;
+  if(farbeAktiv()) el++;
+  if(CFG.merk.instrument) el+=S.felder.length;
+  const fMerk=1+.12*Math.max(0,el-1);
+  const fDichte={wenig:.94, normal:1, viel:1.08}[CFG.dichte];
+  const fDoppel=CFG.doppel?1.15:1;
+  const fBreite=1+.02*Math.max(0, KEYS.filter(k=>CFG.typen[k]).length-2);
+  const SF=fStufe*fZeit*fMerk*fDichte*fDoppel*fBreite;
+
+  return {Q:Q, M:M, A:A, D:D, T:T, SF:SF, el:el, posten:merk.n+aufg.n+S.dual.n,
+          index:Math.round(Q*T*SF*100)};
+}
+function renderResults(){
+  clearTimers(); keyMode=null; contFn=null;
+  slot.classList.add('hidden'); menuBtn.classList.add('hidden'); prog.style.width='100%';
+  const pc=o=>o.n?Math.round(o.ok/o.n*100):0;
+  const B=bewertung();
+  const total=Math.round(B.Q*100), rp=pc({ok:S.rc.ok+S.ri.ok+S.rf.ok,n:S.rc.n+S.ri.n+S.rf.n});
+  const dauer=Math.round((Date.now()-S.t0)/60000);
+  const rtA=med(S.rt), rtB=med(S.rtAbruf);
+  const vorher=ladeVerlauf().slice(-1)[0]||null;
+  speichereLauf({t:Date.now(), stufe:CFG.stufe, bloecke:CFG.bloecke, gesamt:total, merk:rp,
+                 ablese:S.ab.n?pc(S.ab):null, rt:rtA, dauer:dauer,
+                 idx:B.index, sf:Math.round(B.SF*100)/100, doppel:CFG.doppel});
+  const vidx = vorher ? (vorher.idx!==undefined?vorher.idx:vorher.gesamt) : null;
+  const d = vidx===null?null:B.index-vidx;
+  const urteil = rp>=90?'Der Speicher hält unter Last. Nächste Stufe oder kürzere Zeitvorgabe wählen.'
+    : rp>=70?'Solide Leistung. Die Störungen kosten weiterhin Treffer.'
+    : 'Der Speicher bricht unter Ablenkung ab. Zunächst ohne Zeitvorgabe trainieren.';
+  const zeilen=KEYS.filter(k=>S.cat[k].n>0).map(k=>
+    `<div class="stat"><span class="k">${GEN[k].label.charAt(0)+GEN[k].label.slice(1).toLowerCase()}</span><span class="v">${S.cat[k].ok}/${S.cat[k].n} · ${pc(S.cat[k])}%${S.cat[k].rt.length?' · '+(med(S.cat[k].rt)/1000).toFixed(1)+' s':''}</span></div>`).join('');
+  view.innerHTML=`
+    <div class="eyebrow">AUSWERTUNG</div>
+    <h1>Lauf beendet</h1>
+    <div class="card">
+      <div class="score"><div class="num mono">${B.index}</div><div class="lbl">LEISTUNGSINDEX</div></div>
+      <p class="sub" style="text-align:center;margin-top:10px;font-size:13px">
+        ${d===null?'Erster gespeicherter Lauf':(d>=0?'+':'')+d+' gegenüber dem letzten Lauf'}</p>
+      <div class="stat" style="margin-top:12px"><span class="k">Gewichtete Trefferquote</span><span class="v">${total}%</span></div>
+      <div class="stat"><span class="k">Schwierigkeit</span><span class="v">×${B.SF.toFixed(2)}</span></div>
+      <div class="stat"><span class="k">Tempo</span><span class="v">×${B.T.toFixed(2)}</span></div>
+      ${B.posten<20?`<p class="sub" style="margin-top:10px;font-size:12px">Nur ${B.posten} gewertete Posten. Kurze Läufe schwanken stark, für den Verlauf sind mindestens acht Blöcke sinnvoll.</p>`:''}
+    </div>
+    <div class="card">
+      ${S.rc.n?`<div class="stat"><span class="k">Buchstabe erinnert</span><span class="v" style="color:var(--amber)">${S.rc.ok}/${S.rc.n} · ${pc(S.rc)}%</span></div>`:''}
+      ${S.rf.n?`<div class="stat"><span class="k">Farbe erinnert</span><span class="v" style="color:var(--amber)">${S.rf.ok}/${S.rf.n} · ${pc(S.rf)}%</span></div>`:''}
+      ${S.ri.n?`<div class="stat"><span class="k">Instrumentenwerte erinnert</span><span class="v" style="color:var(--amber)">${S.ri.ok}/${S.ri.n} · ${pc(S.ri)}%</span></div>`:''}
+      ${S.ab.n?`<div class="stat"><span class="k">Ablesung an der Anzeige</span><span class="v">${S.ab.ok}/${S.ab.n} · ${pc(S.ab)}%</span></div>`:''}
+      ${zeilen}
+      ${S.dual.n?`<div class="stat"><span class="k">Nebenaufgabe</span><span class="v">${S.dual.ok}/${S.dual.n} · ${pc(S.dual)}% · ${S.dual.rt.length?med(S.dual.rt):0} ms</span></div>`:''}
+      ${S.dual.fehl?`<div class="stat"><span class="k">Fehlgriffe nebenbei</span><span class="v" style="color:var(--red)">${S.dual.fehl}</span></div>`:''}
+      <div class="stat"><span class="k">Reaktionszeit je Aufgabe</span><span class="v">${(rtA/1000).toFixed(1)} s</span></div>
+      <div class="stat"><span class="k">Abrufzeit bei der Abfrage</span><span class="v">${(rtB/1000).toFixed(1)} s</span></div>
+      <div class="stat"><span class="k">Längste Serie</span><span class="v">${S.best}</span></div>
+      <div class="stat"><span class="k">Stufe und Dauer</span><span class="v">${CFG.stufe.toUpperCase()} · ${dauer} min</span></div>
+    </div>
+    <p class="sub" style="margin-top:14px">${urteil}</p>
+    ${S.ab.n&&pc(S.ab)<pc(S.ri)+1&&S.ri.n?`<p class="sub" style="margin-top:8px">Ein Teil der Fehler entsteht bereits beim Ablesen, nicht erst beim Merken.</p>`:''}
+    <button class="btn" id="again">NEUER LAUF</button>
+    <button class="btn ghost" id="hist">VERLAUF</button>
+    <button class="btn ghost" id="home">HAUPTMENÜ</button>`;
+  document.getElementById('again').addEventListener('click',startSession);
+  document.getElementById('hist').addEventListener('click',renderVerlauf);
+  document.getElementById('home').addEventListener('click',renderMenu);
+}
+function verlaufChart(v){
+  const W=320,H=118,px=26,pb=16,pt=10;
+  const n=v.length, xs=i=>px+(W-px-10)*(n<2?0:i/(n-1));
+  const idx=v.map(r=>r.idx!==undefined?r.idx:r.gesamt);
+  const top=Math.max(50,Math.ceil(Math.max.apply(null,idx)/50)*50);
+  const y=x=>pt+(H-pt-pb)*(1-x/top);
+  let grid='';
+  [0,top/2,top].forEach(g=>{ grid+=`<line x1="${px}" y1="${y(g)}" x2="${W-10}" y2="${y(g)}" stroke="#1e2b3a" stroke-width="1"/>
+    <text x="${px-4}" y="${y(g)+3}" fill="#6b7d92" font-size="8" text-anchor="end" font-family="var(--mono)">${g}</text>`; });
+  const linie=`<polyline fill="none" stroke="#ffb020" stroke-width="2" stroke-linejoin="round" points="${v.map((r,i)=>xs(i)+','+y(idx[i])).join(' ')}"/>`;
+  const punkte=v.map((r,i)=>`<circle cx="${xs(i)}" cy="${y(idx[i])}" r="2.4" fill="${r.stufe==='schwer'?'#ff5c5c':r.stufe==='mittel'?'#ffb020':'#4fd6e0'}"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">${grid}${n>1?linie:''}${punkte}</svg>
+    <p class="sub" style="font-size:12px;margin-top:6px">Leistungsindex je Lauf. Punktfarbe zeigt die Stufe: türkis leicht, gelb mittel, rot schwer.</p>`;
+}
+function renderVerlauf(){
+  clearTimers(); keyMode=null; contFn=null;
+  slot.classList.add('hidden'); menuBtn.classList.add('hidden'); prog.style.width='0%';
+  const v=ladeVerlauf();
+  if(!v.length){
+    view.innerHTML=`<div class="eyebrow">VERLAUF</div><h1>Keine Daten</h1>
+      <p class="sub" style="margin-top:8px">${SPEICHER_OK?'Nach dem ersten abgeschlossenen Lauf erscheinen hier Leistungsindex und Trefferquote über die Zeit.':'Der Speicher des Browsers ist nicht verfügbar. In der installierten Anwendung auf dem Startbildschirm funktioniert die Aufzeichnung.'}</p>
+      <button class="btn ghost" id="back">ZURÜCK</button>`;
+    document.getElementById('back').addEventListener('click',renderMenu); return;
+  }
+  const idx=v.map(r=>r.idx!==undefined?r.idx:r.gesamt);
+  const best=Math.max.apply(null,idx);
+  const schnitt=Math.round(idx.reduce((a,b)=>a+b,0)/idx.length);
+  const letzte5=idx.slice(-5), form=Math.round(letzte5.reduce((a,b)=>a+b,0)/letzte5.length);
+  const letzte=v.slice(-6).reverse();
+  view.innerHTML=`
+    <div class="eyebrow">VERLAUF</div>
+    <h1>${v.length} ${v.length===1?'Lauf':'Läufe'}</h1>
+    <div class="card">${verlaufChart(v)}</div>
+    <div class="card">
+      <div class="stat"><span class="k">Bester Index</span><span class="v" style="color:var(--amber)">${best}</span></div>
+      <div class="stat"><span class="k">Form der letzten fünf</span><span class="v">${form}</span></div>
+      <div class="stat"><span class="k">Durchschnitt gesamt</span><span class="v">${schnitt}</span></div>
+      <div class="stat"><span class="k">Beste Trefferquote</span><span class="v">${Math.max.apply(null,v.map(r=>r.gesamt))}%</span></div>
+      <div class="stat"><span class="k">Schnellste Reaktionszeit</span><span class="v">${(Math.min.apply(null,v.map(r=>r.rt||99999))/1000).toFixed(1)} s</span></div>
+    </div>
+    <div class="card">
+      <div class="opt">Letzte Läufe</div>
+      ${letzte.map(r=>`<div class="stat"><span class="k">${datum(r.t)} · ${r.stufe}${r.doppel?' · doppelt':''}</span><span class="v">${r.idx!==undefined?r.idx:r.gesamt} · ${r.gesamt}%${r.sf?' · ×'+r.sf:''}</span></div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="opt">So entsteht der Index</div>
+      <p class="sub" style="margin-top:8px;font-size:13px">Gewichtete Trefferquote mal Tempofaktor mal Schwierigkeitsfaktor, dann mal hundert. In die Trefferquote gehen Merkabfragen mit 55 bis 62 Prozent, Aufgaben mit 30 bis 38 Prozent und die Nebenaufgabe mit 15 Prozent ein. Der Tempofaktor liegt zwischen 0,70 und 1,40 und bezieht sich auf 15 Sekunden je Aufgabe. Der Schwierigkeitsfaktor steigt mit Stufe, Zeitvorgabe, Anzahl der gehaltenen Elemente, Aufgabendichte, Doppelaufgabe und Zahl der Aufgabenarten.</p>
+    </div>
+    <button class="btn ghost" id="back">ZURÜCK</button>
+    <button class="btn ghost" id="clr" style="color:var(--red);border-color:var(--red)">VERLAUF LÖSCHEN</button>`;
+  document.getElementById('back').addEventListener('click',renderMenu);
+  document.getElementById('clr').addEventListener('click',()=>{ loescheVerlauf(); renderVerlauf(); });
+}
+
+/* Menütaste und Tastatur */
+menuBtn.addEventListener('click',()=>modal.classList.remove('hidden'));
+document.getElementById('mNo').addEventListener('click',()=>modal.classList.add('hidden'));
+document.getElementById('mYes').addEventListener('click',()=>{modal.classList.add('hidden');renderMenu();});
+document.addEventListener('keydown',e=>{
+  if(!modal.classList.contains('hidden')) return;
+  if(e.key==='Escape'&&S){modal.classList.remove('hidden');return;}
+  if(keyMode==='weiter'){ if(e.key==='Enter'||e.key===' '){e.preventDefault();if(contFn)contFn();} return; }
+  if(keyMode==='recall'&&/^[a-zA-Z]$/.test(e.key)){recallBuchstabe.answer(e.key.toUpperCase());return;}
+  if(keyMode==='hold'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();if(showLetter.done)showLetter.done();return;}
+  if(keyMode==='wahl'&&renderTask.chooseByKey){
+    const m={ArrowLeft:'L',ArrowRight:'R',l:'L',r:'R',s:'S',h:'H'};
+    const k=m[e.key]||m[e.key.toLowerCase()];
+    if(k) renderTask.chooseByKey(k);
+  }
+});
+
+renderMenu();
+</script>
+</body>
+</html>
