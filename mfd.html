@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MFD Trainer">
+<title>MFD Trainer</title>
+<style>
+:root{
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+  --mono:ui-monospace,'SF Mono',Menlo,Consolas,'Roboto Mono',monospace;
+  --bg:#0a0e14; --panel:#12171d; --bezel:#3a3f45; --bezel2:#2c3136;
+  --screen:#05090d; --amber:#ffb020; --cyan:#4fd6e0; --green:#3ddc84;
+  --red:#ff5c5c; --text:#dbe3ec; --dim:#7c8a99; --line:#222831;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:radial-gradient(1100px 550px at 50% -10%,#141b24 0%,transparent 60%),var(--bg);
+  color:var(--text);font-family:var(--sans);
+  padding:14px 12px 50px;padding-top:calc(14px + env(safe-area-inset-top));
+  user-select:none;overflow-x:hidden;
+}
+.wrap{max-width:520px;margin:0 auto}
+.consolegrid{display:block}
+.mono{font-family:var(--mono)}
+.eyebrow{font-size:10px;letter-spacing:3px;color:var(--amber);font-weight:700}
+h1{font-size:24px;font-weight:700;line-height:1.15;margin-top:5px}
+h2{font-size:16px;font-weight:700;margin-bottom:2px;letter-spacing:.3px}
+.sub{color:var(--dim);font-size:12.5px;line-height:1.55}
+.topbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.topbar .spacer{flex:1}
+.pill{border:1px solid var(--line);background:var(--panel);color:var(--text);
+  border-radius:8px;padding:7px 11px;font-family:inherit;font-size:11.5px;font-weight:600;
+  letter-spacing:.5px;cursor:pointer}
+.pill.on{border-color:var(--amber);color:var(--amber);background:rgba(255,176,32,.1)}
+.card{background:linear-gradient(180deg,var(--panel),#0e131a);border:1px solid var(--line);
+  border-radius:14px;padding:14px;margin-top:12px}
+
+/* ===== Master Alarm ===== */
+.malarmrow{display:flex;justify-content:center;margin:10px 0}
+.malarm{border:2px solid #4a1010;background:#1a0c0c;border-radius:6px;padding:8px 22px;
+  font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:2px;color:#5c1414;
+  cursor:pointer;transition:all .15s}
+.malarm.active{color:#fff;background:#c92a2a;border-color:#ff6b6b;
+  box-shadow:0 0 18px rgba(255,80,80,.6);animation:mapulse 1s infinite}
+.malarm.ack{color:#ffb0b0;background:#5c1414;border-color:#c92a2a;animation:none;box-shadow:none}
+@keyframes mapulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* ===== MFD panel ===== */
+.mfdblock{margin-top:12px}
+.mfdlabel{font-size:10px;letter-spacing:2.5px;color:var(--dim);font-weight:700;margin-bottom:6px;
+  display:flex;justify-content:space-between;align-items:center}
+.mfdlabel b{color:var(--amber)}
+.mfdhousing{background:linear-gradient(180deg,var(--bezel),var(--bezel2));border-radius:14px;
+  padding:9px;display:flex;gap:5px;box-shadow:0 6px 18px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06)}
+.softcol{display:flex;flex-direction:column;justify-content:space-between;gap:4px;width:58px;flex:none}
+.softbtn{display:flex;align-items:center;gap:3px;background:#171b1f;border:1px solid #55606b;
+  border-radius:5px;padding:3px 4px;cursor:pointer;min-height:38px;transition:all .12s}
+.softbtn .tri{width:0;height:0;flex:none}
+.softcol.left .tri{border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid var(--amber)}
+.softcol.right .tri{border-top:5px solid transparent;border-bottom:5px solid transparent;border-right:7px solid var(--amber)}
+.softcol.right .softbtn{flex-direction:row-reverse}
+.softbtn .lbl{font-size:7px;letter-spacing:.3px;color:#c3ccd6;line-height:1.15;font-weight:600}
+.softbtn.active{background:rgba(255,176,32,.22);border-color:var(--amber)}
+.softbtn.active .lbl{color:var(--amber)}
+.notlabeled .lbl{display:none}
+.notlabeled .softbtn{justify-content:center}
+.screenbox{flex:1;min-width:0;aspect-ratio:1/1;background:var(--screen);border:2px solid #0c0f13;
+  border-radius:6px;position:relative;overflow:hidden;box-shadow:inset 0 0 22px rgba(0,0,0,.7)}
+.screeninner{position:absolute;inset:0;padding:8px;display:flex;flex-direction:column;overflow:auto}
+.stitle{font-size:9.5px;letter-spacing:1.5px;color:var(--dim);font-weight:700;text-align:center;flex:none}
+
+/* ===== generic in-screen elements ===== */
+.gauge{display:block;width:100%;height:auto;flex:none}
+.dial{fill:#080d13;stroke:#2b3d50;stroke-width:1.5}
+.dlbl{fill:#9fb3c6;font-family:var(--mono);font-size:8px;text-anchor:middle;dominant-baseline:middle}
+.gaugewrap{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:0}
+.gaugewrap .gauge{max-height:100%}
+.hint{font-size:9px;line-height:1.4;color:var(--dim);text-align:center;margin-top:4px;flex:none}
+
+.keys3{display:flex;flex-wrap:wrap;gap:3px;flex:1;align-content:center}
+.keys2{display:flex;flex-wrap:wrap;gap:3px;flex:1;align-content:start}
+.key{background:#0d141d;border:1px solid #26313d;border-radius:4px;color:var(--text);
+  font-family:inherit;font-size:7.4px;font-weight:700;letter-spacing:.2px;line-height:1.25;
+  padding:5px 2px;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center;
+  min-height:30px;flex:1 1 21%;min-width:0;box-sizing:border-box}
+.key.warn{color:var(--red);border-color:#4a2020}
+.key:active{background:#1b2530}
+
+.microbtn{background:#0d141d;border:1px solid #26313d;border-radius:4px;color:var(--amber);
+  font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 6px;cursor:pointer}
+.rowflex{display:flex;align-items:center;gap:4px;flex:none}
+.rowcenter{justify-content:center}
+.rowbetween{justify-content:space-between}
+
+.field{background:#05090d;border:1px solid #26313d;border-radius:3px;padding:3px 6px;
+  font-family:var(--mono);color:var(--cyan);font-size:11px;text-align:center;flex:none}
+.field.small{font-size:9px;padding:2px 4px}
+.field.active{color:var(--amber);border-color:var(--amber)}
+
+.grid2x6{display:flex;flex-wrap:wrap;gap:3px;flex:1;align-content:center}
+.gcell{background:#0c1218;border:1px solid #232c36;border-radius:3px;padding:4px 3px;
+  font-size:7px;font-weight:700;letter-spacing:.2px;color:#9fb3c6;text-align:center;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;min-height:22px;line-height:1.2;
+  flex:1 1 47%;min-width:0;box-sizing:border-box}
+.gcell.hot{color:#fff;background:#8a1f1f;border-color:#ff6b6b;animation:mapulse 1s infinite}
+.gcell.dead{color:#3a4552;cursor:default}
+
+.lampgrid{display:flex;gap:3px;margin-top:3px;flex:none}
+.lamp{display:flex;flex-direction:column;align-items:center;gap:1px;flex:1 1 0;min-width:0}
+.lamp i{width:7px;height:7px;border-radius:50%;background:#1c2530;border:1px solid #333}
+.lamp.on i{background:var(--green);box-shadow:0 0 5px var(--green)}
+.lamp span{font-size:5px;color:var(--dim);letter-spacing:.1px}
+
+.togglebtn{flex:1;border:1px solid var(--line);border-radius:4px;padding:5px 2px;font-size:8px;
+  font-weight:700;letter-spacing:.5px;text-align:center;cursor:pointer;background:#0d141d;color:var(--dim)}
+.togglebtn.red{background:rgba(255,92,92,.18);border-color:var(--red);color:var(--red)}
+.togglebtn.green{background:rgba(61,220,132,.18);border-color:var(--green);color:var(--green)}
+
+/* ===== bottom instrument strip ===== */
+.stripcard{margin-top:12px}
+.strip{display:flex;gap:5px;margin-top:8px}
+.stripitem{background:var(--screen);border:1px solid #1b232c;border-radius:8px;padding:4px;cursor:pointer;flex:1 1 0;min-width:0}
+.stripitem svg{display:block;width:100%;height:auto}
+
+/* ===== overlay for enlarged instrument ===== */
+.overlay{position:fixed;inset:0;background:rgba(4,7,11,.86);display:flex;align-items:center;
+  justify-content:center;padding:20px;z-index:60}
+.overlay .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:18px;max-width:360px;width:100%;max-height:88vh;overflow:auto}
+.hidden{display:none}
+
+.btn{width:100%;border:none;border-radius:11px;padding:13px;margin-top:12px;font-family:inherit;
+  font-size:14.5px;font-weight:700;letter-spacing:1.5px;background:var(--amber);color:#141005;cursor:pointer}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.btn.small{padding:9px;font-size:12px;margin-top:8px}
+.row2{display:flex;gap:8px;margin-top:10px}
+.row2 .btn{margin-top:0}
+
+.fb{margin-top:10px;border-radius:10px;padding:9px 11px;font-size:11.5px;line-height:1.5;border:1px solid}
+.fb.ok{border-color:var(--green);background:rgba(61,220,132,.09);color:var(--green)}
+.fb.no{border-color:var(--red);background:rgba(255,92,92,.09);color:var(--red)}
+.fb.info{border-color:var(--cyan);background:rgba(79,214,224,.09);color:var(--cyan)}
+
+/* ===== training banner ===== */
+.trainbar{position:sticky;top:0;z-index:40;background:#0d1319;border:1px solid var(--amber);
+  border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.trainbar .top{display:flex;justify-content:space-between;align-items:center;font-size:10px;
+  letter-spacing:1.5px;color:var(--amber);font-weight:700}
+.trainbar .task{font-size:13.5px;margin-top:5px;line-height:1.4}
+.trainbar .time{font-family:var(--mono);color:var(--dim);font-size:11px}
+.compactbar{display:block}
+
+/* ===== Querformat auf groesseren Bildschirmen, etwa iPad ===== */
+@media (min-width:860px) and (orientation:landscape){
+  body{padding:8px 10px}
+  .wrap{max-width:none}
+  .topbar{margin-bottom:0}
+  .eyebrow{font-size:9px;letter-spacing:2px}
+  h1{font-size:16px;margin-top:1px}
+  .introsub{display:none}
+
+  .compactbar{display:flex;align-items:center;gap:12px;margin-top:4px;flex-wrap:wrap}
+  .compactbar .row2{margin-top:0;flex:none;display:flex;gap:6px}
+  .compactbar .pill{padding:5px 9px;font-size:9.5px;letter-spacing:.5px}
+  .compactbar .malarmrow{margin:0;flex:none}
+  .compactbar .malarm{padding:5px 12px;font-size:10px;letter-spacing:1.5px}
+
+  /* Beide Displays nebeneinander. Die Breite je Block wird durch die verfuegbare
+     Hoehe begrenzt, damit das quadratische Anzeigefeld nicht unten herauslaeuft.
+     Das Anzeigefeld selbst behaelt bewusst die Grundregel mit flex und
+     aspect-ratio, die sich im Hochformat bereits bewaehrt hat. */
+  .consolegrid{display:flex;align-items:flex-start;justify-content:center;gap:12px;margin-top:6px}
+  .mfd-L,.mfd-R{flex:1 1 0;min-width:0;max-width:calc(100vh - 175px);margin-top:0}
+  .mfdlabel{font-size:8.5px;margin-bottom:3px}
+  .mfdhousing{padding:7px;gap:4px}
+  .softcol{width:44px;gap:3px}
+  .softbtn{min-height:30px;padding:2px 3px}
+  .softbtn .lbl{font-size:6.4px}
+
+  .stripcard{margin-top:8px;padding:7px 10px;max-width:none}
+  .stripcard .eyebrow{font-size:8.5px;margin-bottom:2px}
+  .strip{margin-top:4px;gap:4px}
+  .stripitem{padding:2px}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+"use strict";
+/* =========================================================
+   Hilfsfunktionen
+   ========================================================= */
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const pad3=n=>String(Math.round(n)).padStart(3,'0');
+const komma=(x,d)=>x.toFixed(d===undefined?1:d).replace('.',',');
+let uid=0;
+const app=document.getElementById('app');
+
+/* =========================================================
+   Grundzustand des Systems (gemeinsam für beide MFD)
+   ========================================================= */
+const SYS={
+  heading: rnd(0,35)*10,
+  bug: rnd(0,35)*10,
+  commActive: 123.450,
+  commStandby: 118.700,
+  baro: 1013,
+  battery: false,
+  generator: true,
+  altMode: 'baro',
+  altBaroBase: 3600,
+  altRadarFt: 850,
+  instrVals:{
+    toel: 3.2, eoel: 5.1, ffl: 14, ttemp: 6, etemp: 6,
+    fqty: 4.5, hyd: 2.0, extemp: 5.5, volt: .62
+  },
+  main:{ torque:2.0, ias:100, pitch:2, bank:-8, slip:.2, vsi:150 },
+  threat: [], threatFrage:null, threatAntwort:null,
+  alarm: { active:false, ack:false, field:null }
+};
+const ALARMFELDER=['ENGINE OIL PRESS','TRANSM OIL PRESS','TRANSM OIL TEMP','ENGINE OIL TEMP',
+  'HYD PRESS','LOW ROTOR','GENERATOR','BATTERY','FUEL LOW','FUEL PUMP','EXHAUST TEMP','CHIP DETECTOR'];
+
+function altBaroFt(){ return Math.round(SYS.altBaroBase + (SYS.baro-1013)*27); }
+
+function zufallsWerte(){
+  SYS.instrVals={
+    toel: rnd(10,55)/10, eoel: rnd(20,65)/10, ffl: rnd(4,28),
+    ttemp: rnd(-4,14), etemp: rnd(-4,14), fqty: rnd(5,68)/10,
+    hyd: rnd(4,32)/10, extemp: rnd(15,92)/10, volt: rnd(30,92)/100
+  };
+  SYS.main={ torque:rnd(8,32)/10, ias:rnd(40,160), pitch:rnd(-12,12), bank:rnd(-45,45), slip:rnd(-8,8)/10, vsi:rnd(-1600,1600) };
+  SYS.altBaroBase=rnd(5,80)*100;
+  SYS.altRadarFt=rnd(3,1800);
+}
+
+function neueBedrohungslage(){
+  const n=rnd(3,6), arr=[];
+  for(let i=0;i<n;i++){
+    arr.push({ kind:Math.random()<.5?'air':'ground', hostile:Math.random()<.5,
+      locked:Math.random()<.5, ring:rnd(1,3), angle:rnd(0,359) });
+  }
+  SYS.threat=arr;
+  const arten=[
+    {text:'Wie viele feindliche Luftziele erfassen dich gerade?', antwort:arr.filter(o=>o.kind==='air'&&o.hostile&&o.locked).length},
+    {text:'Wie viele Bodenziele zeigt die Anzeige insgesamt?', antwort:arr.filter(o=>o.kind==='ground').length},
+    {text:'Wie viele Objekte befinden sich nur in deinem Erfassungsbereich, ohne dich zu erfassen?', antwort:arr.filter(o=>!o.locked).length},
+    {text:'Wie viele feindliche Objekte sind insgesamt zu sehen, egal ob Luft oder Boden?', antwort:arr.filter(o=>o.hostile).length}
+  ];
+  SYS.threatFrage=pick(arten);
+  SYS.threatAntwort=null;
+}
+neueBedrohungslage();
+
+/* =========================================================
+   Funkgeraet und Luftdruck
+   ========================================================= */
+const freqSteps=f=>Math.round(f*40);
+const stepsFreq=s=>s/40;
+function commAdjWhole(d){ SYS.commStandby=stepsFreq(clamp(freqSteps(SYS.commStandby)+d*40,4720,5479)); }
+function commAdjFrac(d){ SYS.commStandby=stepsFreq(clamp(freqSteps(SYS.commStandby)+d,4720,5479)); }
+function commSwap(){ const t=SYS.commActive; SYS.commActive=SYS.commStandby; SYS.commStandby=t; }
+function baroAdj(d){ SYS.baro=clamp(SYS.baro+d,950,1050); }
+
+/* =========================================================
+   Zustand je Multifunktionsdisplay
+   ========================================================= */
+function neuesMfd(startScreen){
+  return {
+    screen: startScreen, instruSel:null, info1Sel:null,
+    mapMode:'north', mapZoom:1,
+    compInput:'', compLast:'', compBestaetigt:false, compTimer:null,
+    stopwatch:{ running:false, elapsedMs:0, startTs:0 }
+  };
+}
+const MFD={ L:neuesMfd('comm'), R:neuesMfd('nav') };
+let labelsSichtbar=true;
+
+/* =========================================================
+   Runde Grundinstrumente, wiederverwendbar
+   ========================================================= */
+function gaugeSvg(inner){
+  return `<svg class="gauge" viewBox="0 0 100 100">
+    <circle class="dial" cx="50" cy="50" r="46"/>${inner}</svg>`;
+}
+
+function svgHorizon(pitch,bank,slip){
+  const id='h'+(++uid), p=pitch*1.6;
+  const P=(deg,r)=>[50+r*Math.cos((deg-90)*Math.PI/180), 50+r*Math.sin((deg-90)*Math.PI/180)];
+  let sc='';
+  for(let d=10; d<=60; d+=10){
+    [d,-d].forEach(x=>{
+      const w=180-x, a1=P(w,33.5), a2=P(w,40.5);
+      sc+=`<line x1="${a1[0]}" y1="${a1[1]}" x2="${a2[0]}" y2="${a2[1]}" stroke="#e6eef7" stroke-width="${x%30===0?1.5:1}"/>`;
+    });
+  }
+  const n1=P(180,33.5), n2=P(180,41.5);
+  sc+=`<line x1="${n1[0]}" y1="${n1[1]}" x2="${n2[0]}" y2="${n2[1]}" stroke="#ffb020" stroke-width="1.8"/>`;
+  let pl='';
+  [5,10,15,20].forEach(d=>[d,-d].forEach(x=>{
+    const w=(Math.abs(x)%10===0)?9:4.5;
+    pl+=`<line x1="${50-w}" y1="${50-x*1.6}" x2="${50+w}" y2="${50-x*1.6}" stroke="#e6eef7" stroke-width=".9"/>`;
+  }));
+  const sl=clamp(slip===undefined?0:slip,-1,1);
+  return gaugeSvg(`
+    <defs><clipPath id="${id}"><circle cx="50" cy="50" r="34"/></clipPath></defs>
+    <g clip-path="url(#${id})">
+      <g transform="rotate(${-bank} 50 50)">
+        <g transform="translate(0 ${p})">
+          <rect x="-60" y="-100" width="220" height="150" fill="#2f6fa8"/>
+          <rect x="-60" y="50" width="220" height="150" fill="#7d3b2e"/>
+          <line x1="-60" y1="50" x2="160" y2="50" stroke="#e6eef7" stroke-width="1.2"/>
+          ${pl}
+        </g>
+        <polygon points="50,79 46.8,73.5 53.2,73.5" fill="#ffb020"/>
+      </g>
+    </g>
+    <circle cx="50" cy="50" r="34" fill="none" stroke="#2b3d50" stroke-width="1"/>
+    ${sc}
+    <path d="M27 50 h13 M60 50 h13" stroke="#ffb020" stroke-width="2.6" fill="none"/>
+    <path d="M44 50 h3 M53 50 h3" stroke="#ffb020" stroke-width="2.6" fill="none"/>
+    <circle cx="50" cy="50" r="1.6" fill="#ffb020"/>
+    <rect x="34" y="86" width="32" height="8" rx="4" fill="#0b1119" stroke="#8fa4b8" stroke-width=".8"/>
+    <line x1="46" y1="86.6" x2="46" y2="93.4" stroke="#8fa4b8" stroke-width=".8"/>
+    <line x1="54" y1="86.6" x2="54" y2="93.4" stroke="#8fa4b8" stroke-width=".8"/>
+    <circle cx="${50+sl*12}" cy="90" r="2.9" fill="#141a22" stroke="#8fa4b8" stroke-width=".5"/>`);
+}
+
+function svgAltBaro(alt, qnh){
+  let m='';
+  for(let i=0;i<50;i++){
+    const a=(i*7.2-90)*Math.PI/180, maj=i%5===0, r1=maj?31:35;
+    m+=`<line x1="${50+r1*Math.cos(a)}" y1="${50+r1*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="${maj?'#e6eef7':'#8fa4b8'}" stroke-width="${maj?1.5:.7}"/>`;
+    if(maj) m+=`<text class="dlbl" style="font-size:7.5px" x="${50+24*Math.cos(a)}" y="${50+24*Math.sin(a)}">${i/5}</text>`;
+  }
+  const nd=(deg,len,w,tail)=>{const a=(deg-90)*Math.PI/180;
+    return `<line x1="${50-(tail||5)*Math.cos(a)}" y1="${50-(tail||5)*Math.sin(a)}" x2="${50+len*Math.cos(a)}" y2="${50+len*Math.sin(a)}" stroke="#e6eef7" stroke-width="${w}" stroke-linecap="round"/>`;};
+  const altR=Math.max(0,Math.round(alt));
+  const ziffern=String(Math.floor(altR/100)*100).padStart(5,'0');
+  const fenster=`<rect x="60" y="35.5" width="19" height="7.5" rx="1" fill="#05090d" stroke="#8fa4b8" stroke-width=".7"/>
+    <text x="69.5" y="41" class="dlbl" style="font-size:5.4px;letter-spacing:.2px">${ziffern}</text>`;
+  return gaugeSvg(m + fenster
+    + `<text x="50" y="76" class="dlbl" style="font-size:5px;letter-spacing:1px">FEET</text>`
+    + `<text x="50" y="82" class="dlbl" style="font-size:4.4px">${qnh||1013} hPa</text>`
+    + nd((altR%10000)/10000*360, 20, 4.4)
+    + nd((altR%1000)/1000*360, 33, 2)
+    + `<circle cx="50" cy="50" r="2.6" fill="#9fb3c6"/>`);
+}
+
+function radarDeg(v){
+  // Gleiche Bauart wie die uebrigen Rundinstrumente: Start unten links bei 180 Grad,
+  // 300 Grad Sweep im Uhrzeigersinn, Luecke unten. 0 bis 200 belegt die erste Haelfte
+  // des Sweeps, 200 bis 2000 die zweite Haelfte, das macht die Skala im bodennahen
+  // Bereich spuerbar gestreckt, also logarithmisch wirkend.
+  const lo=[0,25,50,75,100,125,150,175,200], hi=[200,500,1000,1500,2000];
+  v=clamp(v,0,2000);
+  let frac;
+  if(v<=200){
+    frac=0.5; 
+    for(let i=0;i<lo.length-1;i++){ if(v<=lo[i+1]){ const t=(v-lo[i])/(lo[i+1]-lo[i]); frac=0.5*(i+t)/(lo.length-1); break; } }
+  } else {
+    frac=1;
+    for(let i=0;i<hi.length-1;i++){ if(v<=hi[i+1]){ const t=(v-hi[i])/(hi[i+1]-hi[i]); frac=0.5+0.5*(i+t)/(hi.length-1); break; } }
+  }
+  return 180+frac*300;
+}
+function svgAltRadar(ft){
+  const marks=[0,25,50,75,100,125,150,175,200,500,1000,1500,2000];
+  let m='';
+  marks.forEach(v=>{
+    const a=(radarDeg(v)-90)*Math.PI/180;
+    m+=`<line x1="${50+31*Math.cos(a)}" y1="${50+31*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="#e6eef7" stroke-width="1.4"/>`;
+    m+=`<text class="dlbl" style="font-size:6px" x="${50+23.5*Math.cos(a)}" y="${50+23.5*Math.sin(a)}">${v}</text>`;
+  });
+  const a=(radarDeg(ft)-90)*Math.PI/180;
+  return gaugeSvg(m
+    + `<text x="50" y="80" class="dlbl" style="font-size:5px;letter-spacing:1px">FEET</text>`
+    + `<line x1="${50-6*Math.cos(a)}" y1="${50-6*Math.sin(a)}" x2="${50+32*Math.cos(a)}" y2="${50+32*Math.sin(a)}" stroke="#ff8a3d" stroke-width="2.2" stroke-linecap="round"/>`
+    + `<circle cx="50" cy="50" r="2.6" fill="#9fb3c6"/>`);
+}
+
+function iasDeg(v){ return v/180*340; }
+function svgIas(v){
+  let m='';
+  for(let s=0;s<=180;s+=5){
+    const a=(iasDeg(s)-90)*Math.PI/180, maj=s%20===0, mit=s%10===0;
+    m+=`<line x1="${50+(maj?30:mit?33:35)*Math.cos(a)}" y1="${50+(maj?30:mit?33:35)*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="#e6eef7" stroke-width="${maj?1.5:.8}"/>`;
+    if(maj&&s>0) m+=`<text class="dlbl" style="font-size:7.5px" x="${50+23*Math.cos(a)}" y="${50+23*Math.sin(a)}">${s}</text>`;
+  }
+  const marke=(w,col)=>{const a=(iasDeg(w)-90)*Math.PI/180;
+    return `<line x1="${50+33*Math.cos(a)}" y1="${50+33*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="${col}" stroke-width="2.2"/>`;};
+  const a=(iasDeg(v)-90)*Math.PI/180;
+  return gaugeSvg(m + marke(30,'#ff5c5c') + marke(170,'#ff5c5c')
+    + `<text x="50" y="80" class="dlbl" style="font-size:5px;letter-spacing:1px">KNOTS</text>`
+    + `<line x1="${50-6*Math.cos(a)}" y1="${50-6*Math.sin(a)}" x2="${50+32*Math.cos(a)}" y2="${50+32*Math.sin(a)}" stroke="#e6eef7" stroke-width="2.2" stroke-linecap="round"/>`
+    + `<circle cx="50" cy="50" r="2.6" fill="#9fb3c6"/>`);
+}
+
+function svgHsi(hdg, nadel){
+  let m='';
+  for(let d=0;d<360;d+=5){
+    const lang=d%10===0, a=(d-90)*Math.PI/180, r1=lang?33:36.5;
+    m+=`<line x1="${50+r1*Math.cos(a)}" y1="${50+r1*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="#f2f4f7" stroke-width="${lang?1.5:.9}"/>`;
+    if(d%30===0){
+      const kard=(d%90===0);
+      const l=d===0?'N':d===90?'E':d===180?'S':d===270?'W':pad3(d);
+      const x=50+29.5*Math.cos(a), y=50+29.5*Math.sin(a);
+      m+=`<text x="${x}" y="${y}" transform="rotate(${d} ${x} ${y})" fill="#f2f4f7" font-size="${kard?7.5:5.6}" font-weight="${kard?'700':'400'}" letter-spacing="-.2" text-anchor="middle" dominant-baseline="middle" font-family="var(--sans)">${l}</text>`;
+    }
+  }
+  const flieger=`<path d="M50 32.5 L52.4 40.5 L52.4 45.2 L68 50.2 L68 53.4 L52.4 51.6 L52.4 61.4 L57.8 65.2
+    L57.8 67.4 L50 65.6 L42.2 67.4 L42.2 65.2 L47.6 61.4 L47.6 51.6 L32 53.4 L32 50.2 L47.6 45.2 L47.6 40.5 Z"
+    fill="none" stroke="#f2f4f7" stroke-width="1.3" stroke-linejoin="round"/>`;
+  const nd=(nadel!==undefined&&nadel!==null)?(()=>{const a=(nadel-hdg-90)*Math.PI/180;
+    return `<line x1="${50-30*Math.cos(a)}" y1="${50-30*Math.sin(a)}" x2="${50+30*Math.cos(a)}" y2="${50+30*Math.sin(a)}" stroke="#ffd83d" stroke-width="2.2"/>
+      <polygon points="${50+34*Math.cos(a)},${50+34*Math.sin(a)} ${50+26*Math.cos(a)+4*Math.sin(a)},${50+26*Math.sin(a)-4*Math.cos(a)} ${50+26*Math.cos(a)-4*Math.sin(a)},${50+26*Math.sin(a)+4*Math.cos(a)}" fill="#ffd83d"/>`;})():'';
+  return gaugeSvg(`<circle cx="50" cy="50" r="40" fill="#3a3d41"/>
+    <g transform="rotate(${-hdg} 50 50)">${m}</g>
+    ${flieger}${nd}
+    <polygon points="50,10 44.8,2.6 55.2,2.6" fill="#f2f4f7"/>`);
+}
+
+function svgVsi(v){
+  const deg=x=>{ const t=clamp(x,-2000,2000)/2000; return -90+t*150; };
+  let m='';
+  for(let x=-2000;x<=2000;x+=100){
+    const maj=x%500===0, a=(deg(x)-90)*Math.PI/180;
+    m+=`<line x1="${50+(maj?31:35)*Math.cos(a)}" y1="${50+(maj?31:35)*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="#e6eef7" stroke-width="${maj?1.4:.8}"/>`;
+    if(x%1000===0) m+=`<text class="dlbl" style="font-size:7.5px" x="${50+24*Math.cos(a)}" y="${50+24*Math.sin(a)}">${Math.abs(x)/1000}</text>`;
+    else if(maj) m+=`<text class="dlbl" style="font-size:6px" x="${50+24*Math.cos(a)}" y="${50+24*Math.sin(a)}">${komma(Math.abs(x)/1000)}</text>`;
+  }
+  const a=(deg(v)-90)*Math.PI/180;
+  return gaugeSvg(m
+    + `<text x="66" y="44" class="dlbl" style="font-size:4.6px">UP</text>`
+    + `<text x="66" y="59" class="dlbl" style="font-size:4.6px">DN</text>`
+    + `<text x="50" y="82" class="dlbl" style="font-size:4.2px;letter-spacing:.4px">x1000 FT/MIN</text>`
+    + `<line x1="${50-6*Math.cos(a)}" y1="${50-6*Math.sin(a)}" x2="${50+32*Math.cos(a)}" y2="${50+32*Math.sin(a)}" stroke="#e6eef7" stroke-width="2.2" stroke-linecap="round"/>`
+    + `<circle cx="50" cy="50" r="2.6" fill="#9fb3c6"/>`);
+}
+
+function svgTorque(v){
+  const deg=x=>180+x/3.5*300;
+  let m='';
+  for(let x=0;x<=3.5001;x+=0.1){
+    const w=Math.round(x*10)/10, maj=Math.round(w*10)%5===0;
+    const a=(deg(w)-90)*Math.PI/180;
+    m+=`<line x1="${50+(maj?30:34)*Math.cos(a)}" y1="${50+(maj?30:34)*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="#e6eef7" stroke-width="${maj?1.5:.8}"/>`;
+    if(maj) m+=`<text class="dlbl" style="font-size:7px" x="${50+22*Math.cos(a)}" y="${50+22*Math.sin(a)}">${komma(w)}</text>`;
+  }
+  const bogen=(v1,v2,col,w)=>{
+    const pt=x=>{const a=(deg(x)-90)*Math.PI/180; return [50+38*Math.cos(a),50+38*Math.sin(a)];};
+    const p1=pt(v1), p2=pt(v2), gross=(deg(v2)-deg(v1))>180?1:0;
+    return `<path d="M${p1[0]} ${p1[1]} A 38 38 0 ${gross} 1 ${p2[0]} ${p2[1]}" fill="none" stroke="${col}" stroke-width="${w}"/>`;
+  };
+  const a=(deg(clamp(v,0,3.5))-90)*Math.PI/180;
+  return gaugeSvg(bogen(0,3.4,'#3ddc84',1.8) + bogen(3.4,3.5,'#ff5c5c',2.6) + m
+    + `<text x="50" y="80" class="dlbl" style="font-size:5px;letter-spacing:.5px">kp/cm²</text>`
+    + `<line x1="${50-6*Math.cos(a)}" y1="${50-6*Math.sin(a)}" x2="${50+32*Math.cos(a)}" y2="${50+32*Math.sin(a)}" stroke="#e6eef7" stroke-width="2.4" stroke-linecap="round"/>`
+    + `<circle cx="50" cy="50" r="2.6" fill="#9fb3c6"/>`);
+}
+
+/* Generisches Rundinstrument fuer die neun ueberwachbaren Anzeigen */
+function svgRund(v,cfg){
+  const span=cfg.max-cfg.min;
+  const deg=x=>180+(clamp(x,cfg.min,cfg.max)-cfg.min)/span*300;
+  let m='';
+  const minor=cfg.minor||cfg.major;
+  for(let x=cfg.min; x<=cfg.max+1e-9; x+=minor){
+    const w=Math.round(x*100)/100, maj=Math.abs(Math.round((w-cfg.min)/cfg.major)*cfg.major-(w-cfg.min))<1e-6;
+    const a=(deg(w)-90)*Math.PI/180;
+    m+=`<line x1="${50+(maj?30:34)*Math.cos(a)}" y1="${50+(maj?30:34)*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="#e6eef7" stroke-width="${maj?1.5:.8}"/>`;
+    if(maj) m+=`<text class="dlbl" style="font-size:7px" x="${50+22*Math.cos(a)}" y="${50+22*Math.sin(a)}">${cfg.decimals?komma(w,cfg.decimals):Math.round(w)}</text>`;
+  }
+  const pt=x=>{const a=(deg(x)-90)*Math.PI/180; return [50+38*Math.cos(a),50+38*Math.sin(a)];};
+  const bogen=(v1,v2,col,w)=>{ const p1=pt(v1),p2=pt(v2),gross=(deg(v2)-deg(v1))>180?1:0;
+    return `<path d="M${p1[0]} ${p1[1]} A 38 38 0 ${gross} 1 ${p2[0]} ${p2[1]}" fill="none" stroke="${col}" stroke-width="${w}"/>`; };
+  let arcs='';
+  if(cfg.greenFrom!==undefined) arcs+=bogen(cfg.greenFrom,cfg.greenTo,'#3ddc84',1.8);
+  if(cfg.redAt!==undefined){ const a=(deg(cfg.redAt)-90)*Math.PI/180;
+    arcs+=`<line x1="${50+30*Math.cos(a)}" y1="${50+30*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="#ff5c5c" stroke-width="2.6"/>`; }
+  if(cfg.redFrom!==undefined) arcs+=bogen(cfg.redFrom,cfg.redTo,'#ff5c5c',2.4);
+  const a=(deg(v)-90)*Math.PI/180;
+  return gaugeSvg(arcs + m
+    + `<text x="50" y="80" class="dlbl" style="font-size:5px;letter-spacing:.3px">${cfg.unit}</text>`
+    + `<line x1="${50-6*Math.cos(a)}" y1="${50-6*Math.sin(a)}" x2="${50+32*Math.cos(a)}" y2="${50+32*Math.sin(a)}" stroke="#e6eef7" stroke-width="2.2" stroke-linecap="round"/>`
+    + `<circle cx="50" cy="50" r="2.6" fill="#9fb3c6"/>`);
+}
+
+function svgVoltage(frac){
+  // Halbkreis oben, 0 bis 1, roter Bereich am rechten Ende
+  const deg=x=>180+clamp(x,0,1)*180;
+  let m='';
+  for(let x=0;x<=1.0001;x+=0.1){
+    const a=(deg(x)-90)*Math.PI/180, maj=Math.round(x*10)%2===0;
+    m+=`<line x1="${50+(maj?32:35)*Math.cos(a)}" y1="${50+(maj?32:35)*Math.sin(a)}" x2="${50+41*Math.cos(a)}" y2="${50+41*Math.sin(a)}" stroke="#e6eef7" stroke-width="${maj?1.4:.8}"/>`;
+  }
+  const pt=x=>{const a=(deg(x)-90)*Math.PI/180; return [50+44*Math.cos(a),50+44*Math.sin(a)];};
+  const p1=pt(.82), p2=pt(1);
+  const a=(deg(frac)-90)*Math.PI/180;
+  return `<svg class="gauge" viewBox="0 20 100 62">
+    <path d="M6 50 A44 44 0 0 1 94 50" fill="none" stroke="#2b3d50" stroke-width="1.5"/>
+    <path d="M${p1[0]} ${p1[1]} A44 44 0 0 1 ${p2[0]} ${p2[1]}" fill="none" stroke="#ff5c5c" stroke-width="3"/>
+    ${m}
+    <text x="50" y="42" class="dlbl" style="font-size:5.5px;letter-spacing:.4px">VOLTAGE</text>
+    <line x1="${50-6*Math.cos(a)}" y1="${50-6*Math.sin(a)}" x2="${50+34*Math.cos(a)}" y2="${50+34*Math.sin(a)}" stroke="#e6eef7" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="2.6" fill="#9fb3c6"/>
+  </svg>`;
+}
+
+/* =========================================================
+   Die neun ueberwachbaren Instrumente
+   ========================================================= */
+const INSTR=[
+ {key:'toel', name:'TRANSMISSION OIL PRESSURE', kurz:'Getriebeöldruck',
+  cfg:{min:0,max:7,major:1,unit:'kp/cm²',greenFrom:2.5,greenTo:4.5,redAt:5.5},
+  hint:'Der Betriebsbereich liegt zwischen 2,5 und 4,5 kp/cm². Ab 5,5 kp/cm² ist die Grenze markiert.'},
+ {key:'eoel', name:'ENGINE OIL PRESSURE', kurz:'Motoröldruck',
+  cfg:{min:0,max:7,major:1,unit:'kp/cm²',greenFrom:4,greenTo:6.5,redAt:6.8},
+  hint:'Der Betriebsbereich liegt zwischen 4 und 6,5 kp/cm². Ab 6,8 kp/cm² ist die Grenze markiert.'},
+ {key:'ffl', name:'FUEL FLOW', kurz:'Kraftstoffdurchfluss',
+  cfg:{min:0,max:30,major:5,unit:'x10 kg/h'},
+  hint:'Zeigt den Kraftstoffdurchfluss in Zehnfach-Kilogramm je Stunde an.'},
+ {key:'ttemp', name:'TRANSMISSION OIL TEMPERATURE', kurz:'Getriebeöltemperatur',
+  cfg:{min:-5,max:15,major:5,unit:'x10 °C',redAt:13},
+  hint:'Anzeige in Zehnfach-Grad-Celsius. Ab etwa 130 Grad ist die Grenze markiert.'},
+ {key:'etemp', name:'ENGINE OIL TEMPERATURE', kurz:'Motoröltemperatur',
+  cfg:{min:-5,max:15,major:5,unit:'x10 °C'},
+  hint:'Anzeige in Zehnfach-Grad-Celsius, wie die Getriebeöltemperatur.'},
+ {key:'fqty', name:'FUEL QUANTITY', kurz:'Kraftstoffvorrat',
+  cfg:{min:0,max:7,major:1,unit:'x100 kg'},
+  hint:'Anzeige in Hundertfach-Kilogramm verbliebenem Kraftstoff.'},
+ {key:'hyd', name:'HYDRAULIC PRESSURE', kurz:'Hydraulikdruck',
+  cfg:{min:0,max:3.5,major:.5,minor:.5,decimals:1,unit:'kp/cm²',greenFrom:.5,greenTo:3.0,redFrom:3.3,redTo:3.5},
+  hint:'Der Betriebsbereich reicht bis etwa 3,0 kp/cm², darüber beginnt die rote Markierung.'},
+ {key:'extemp', name:'EXHAUST TEMPERATURE', kurz:'Abgastemperatur',
+  cfg:{min:0,max:10,major:1,unit:'x100 °C',greenFrom:6,greenTo:9},
+  hint:'Anzeige in Hundertfach-Grad-Celsius. Der Betriebsbereich liegt im oberen Skalendrittel.'},
+ {key:'volt', name:'VOLTAGE', kurz:'Bordspannung',
+  cfg:null,
+  hint:'Zeigt die Bordspannung. Der rote Bereich am rechten Ende bedeutet Überspannung.'}
+];
+function instrByKey(k){ return INSTR.find(i=>i.key===k); }
+
+/* =========================================================
+   Alarmtafel
+   ========================================================= */
+function stoerfallAusloesen(){
+  SYS.alarm.field=pick(ALARMFELDER);
+  SYS.alarm.active=true; SYS.alarm.ack=false;
+}
+function stoerfallZuruecksetzen(){
+  SYS.alarm.active=false; SYS.alarm.ack=false; SYS.alarm.field=null;
+}
+function alarmQuittieren(){ if(SYS.alarm.active) SYS.alarm.ack=true; renderAlarmLampe(); }
+
+/* =========================================================
+   Master Alarm Lampe
+   ========================================================= */
+function renderAlarmLampe(){
+  const el=document.getElementById('malarm');
+  if(!el) return;
+  el.classList.remove('active','ack');
+  if(SYS.alarm.active) el.classList.add(SYS.alarm.ack?'ack':'active');
+}
+
+/* =========================================================
+   Die zehn Anzeigen je MFD
+   ========================================================= */
+const SCHALTER_LINKS=[['alarm','ALARM'],['nav','NAV'],['comm','COMM'],['instru','INSTRU'],['threat','THREAT']];
+const SCHALTER_RECHTS=[['clock','CLOCK'],['comp','COMP'],['map','MAP'],['info1','INFO 1'],['info2','INFO 2']];
+
+function screenAlarm(side){
+  const felder=ALARMFELDER.map(f=>{
+    const hot=SYS.alarm.active && SYS.alarm.field===f;
+    return `<div class="gcell ${hot?'hot':''}">${f}</div>`;
+  }).join('');
+  return `<div class="stitle">ALARM TAFEL</div>
+    <div class="grid2x6">${felder}</div>
+    <div class="row2">
+      <button class="btn small ghost" data-act="triggerAlarm">STÖRFALL</button>
+      <button class="btn small ghost" data-act="resetAlarm">ZURÜCKSETZEN</button>
+    </div>
+    <p class="hint">${SYS.alarm.active?'Das hellrot leuchtende Feld zeigt das betroffene System.':'Kein aktiver Störfall.'}</p>`;
+}
+
+function screenNav(side){
+  return `<div class="stitle">NAV KOMPASS</div>
+    <div class="gaugewrap">${svgHsi(SYS.heading,SYS.bug)}</div>
+    <div class="rowflex rowbetween">
+      <div class="rowflex">
+        <button class="microbtn" data-act="hdgAdj" data-arg="-5">−</button>
+        <div class="field small">HDG ${pad3(SYS.heading)}</div>
+        <button class="microbtn" data-act="hdgAdj" data-arg="5">+</button>
+      </div>
+    </div>
+    <div class="rowflex rowbetween" style="margin-top:3px">
+      <div class="rowflex">
+        <button class="microbtn" data-act="bugAdj" data-arg="-5">−</button>
+        <div class="field small active">ZIEL ${pad3(SYS.bug)}</div>
+        <button class="microbtn" data-act="bugAdj" data-arg="5">+</button>
+      </div>
+    </div>
+    <p class="hint">Weiße Rose zeigt den Kurs. Der gelbe Zeiger, die number one needle, zeigt zum Ziel.</p>`;
+}
+
+function screenComm(side){
+  return `<div class="stitle">COMM</div>
+    <div class="rowflex rowcenter" style="margin-top:6px">
+      <div class="field">${SYS.commStandby.toFixed(3)}</div>
+      <div class="microbtn" data-act="commSwap" style="font-size:14px">⇄</div>
+      <div class="field active">${SYS.commActive.toFixed(3)}</div>
+    </div>
+    <div class="rowflex rowcenter" style="margin-top:4px">
+      <button class="microbtn" data-act="commWhole" data-arg="-1">MHz −</button>
+      <button class="microbtn" data-act="commWhole" data-arg="1">MHz +</button>
+      <button class="microbtn" data-act="commFrac" data-arg="-1">kHz −</button>
+      <button class="microbtn" data-act="commFrac" data-arg="1">kHz +</button>
+    </div>
+    <p class="hint" style="margin-top:8px">Links steht die vorgewählte, rechts die aktive Frequenz. Der Doppelpfeil tauscht beide.</p>
+    <div class="rowflex rowcenter" style="margin-top:10px">
+      <button class="microbtn" data-act="baroAdj" data-arg="-1">BARO −</button>
+      <div class="field">${SYS.baro} hPa</div>
+      <button class="microbtn" data-act="baroAdj" data-arg="1">BARO +</button>
+    </div>
+    <p class="hint">Standardluftdruck 1013 hPa. Wirkt auf den barometrischen Höhenmesser.</p>`;
+}
+
+function screenInstruMenu(side){
+  const namen=INSTR.map(i=>`<div class="gcell" style="flex-basis:31%" data-act="openInstr" data-arg="${i.key}">${i.name}</div>`).join('');
+  return `<div class="stitle">INSTRUMENTS</div>
+    <div class="grid2x6" id="instrumenu">${namen}</div>
+    <button class="btn small ghost" data-act="randomAll">ZUFALLSWERTE</button>`;
+}
+
+function screenInstruDetail(side){
+  const i=instrByKey(MFD[side].instruSel)||INSTR[0];
+  let g;
+  if(i.key==='volt'){
+    g=`<div style="max-width:150px;margin:0 auto">${svgVoltage(SYS.instrVals.volt)}</div>
+      <div class="lampgrid">
+        ${['BUS 1','BUS 2','BUS 3','INV 1','GEN 1','INV 2','AVIO','GEN 2','TUNER'].map(n=>
+          `<div class="lamp ${Math.random()<.8?'on':''}"><i></i><span>${n}</span></div>`).join('')}
+      </div>
+      <div class="row2" style="margin-top:5px">
+        <div class="togglebtn ${SYS.battery?'':'red'}" data-act="battToggle">BATTERY ${SYS.battery?'ON':'OFF'}</div>
+        <div class="togglebtn ${SYS.generator?'green':''}" data-act="genToggle">GENERATOR ${SYS.generator?'ON':'OFF'}</div>
+      </div>`;
+    return `<div class="stitle">${i.name}</div>${g}
+      <p class="hint" style="margin-top:4px">Zurück nur über INSTRU.</p>`;
+  } else {
+    g=`<div class="gaugewrap">${svgRund(SYS.instrVals[i.key], i.cfg)}</div>`;
+  }
+  return `<div class="stitle">${i.name}</div>
+    ${g}
+    <p class="hint">${i.hint} Zurück nur über den Schalter INSTRU.</p>`;
+}
+
+function screenThreat(side){
+  const R=[13,24,35];
+  let objs='';
+  SYS.threat.forEach(o=>{
+    const r=R[o.ring-1], a=(o.angle-90)*Math.PI/180;
+    const x=50+r*Math.cos(a), y=50+r*Math.sin(a);
+    const col=o.hostile?'#ff5c5c':'#4fd6e0';
+    if(o.kind==='air'){
+      objs+=`<rect x="${x-3.4}" y="${y-3.4}" width="6.8" height="6.8" fill="${o.locked?col:'none'}" stroke="${col}" stroke-width="1.3"/>`;
+    } else {
+      objs+=`<circle cx="${x}" cy="${y}" r="3.6" fill="${o.locked?col:'none'}" stroke="${col}" stroke-width="1.3"/>`;
+    }
+  });
+  const rings=R.map((r,i)=>`<circle cx="50" cy="50" r="${r}" fill="none" stroke="#26313d" stroke-width=".8"/>
+    <text x="50" y="${50-r-2}" class="dlbl" style="font-size:5px">${[5,10,15][i]}</text>`).join('');
+  const kreuz=`<path d="M50 44 v12 M44 50 h12" stroke="#f2f4f7" stroke-width="1.6"/>`;
+  const svg=`<svg class="gauge" viewBox="0 0 100 100">${rings}${objs}${kreuz}</svg>`;
+  const beantwortet=SYS.threatAntwort!==null;
+  const antworten=[0,1,2,3,4,5,6].map(n=>{
+    let kl='key';
+    if(beantwortet){
+      if(n===SYS.threatFrage.antwort) kl+=' warn';
+      if(n===SYS.threatAntwort && n!==SYS.threatFrage.antwort) kl+=' warn';
+    }
+    return `<div class="${kl}" style="flex-basis:12%" data-act="answerThreat" data-arg="${n}">${n}</div>`;
+  }).join('');
+  return `<div class="stitle">THREAT</div>
+    <div class="gaugewrap" style="flex:none">${svg}</div>
+    <p class="hint">Quadrat gleich Luftziel, Kreis gleich Bodenziel. Rot gleich feindlich. Umriss gleich im Erfassungsbereich, ausgefüllt gleich erfasst und identifiziert. Nicht jedes Objekt ist zwangsläufig eine Bedrohung.</p>
+    <button class="btn small ghost" data-act="newThreat">NEUE LAGE</button>
+    <p class="hint" style="margin-top:6px;color:var(--text)">${SYS.threatFrage?SYS.threatFrage.text:''}</p>
+    <div class="keys3" style="flex:none;margin-top:4px">${antworten}</div>
+    ${beantwortet?`<div class="fb ${SYS.threatAntwort===SYS.threatFrage.antwort?'ok':'no'}">Richtig ist ${SYS.threatFrage.antwort}.</div>`:''}`;
+}
+
+function clockZeit(side){
+  const sw=MFD[side].stopwatch;
+  const ms=sw.elapsedMs + (sw.running?(Date.now()-sw.startTs):0);
+  return ms;
+}
+function screenClock(side){
+  const ms=clockZeit(side), sek=(ms/1000)%60, min=Math.floor(ms/60000)%60;
+  const sa=sek/60*360, ma=min/60*360;
+  const totalS=Math.floor(ms/1000);
+  return `<div class="stitle">CLOCK</div>
+    <div class="gaugewrap"><svg class="gauge" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="40" fill="#080d13" stroke="#2b3d50" stroke-width="1.5"/>
+      ${Array.from({length:60}).map((_,i)=>{
+        const maj=i%15===0, a=(i*6-90)*Math.PI/180, r1=maj?31:35;
+        return `<line x1="${50+r1*Math.cos(a)}" y1="${50+r1*Math.sin(a)}" x2="${50+38*Math.cos(a)}" y2="${50+38*Math.sin(a)}" stroke="#e6eef7" stroke-width="${maj?1.5:.8}"/>`
+          + (maj?`<text class="dlbl" style="font-size:7px" x="${50+25*Math.cos(a)}" y="${50+25*Math.sin(a)}">${i}</text>`:'');
+      }).join('')}
+      <line x1="50" y1="50" x2="${50+18*Math.cos((ma-90)*Math.PI/180)}" y2="${50+18*Math.sin((ma-90)*Math.PI/180)}" stroke="#9fb3c6" stroke-width="2" stroke-linecap="round"/>
+      <line x1="50" y1="50" x2="${50+32*Math.cos((sa-90)*Math.PI/180)}" y2="${50+32*Math.sin((sa-90)*Math.PI/180)}" stroke="#ffb020" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="50" cy="50" r="2" fill="#e6eef7"/>
+    </svg></div>
+    <div class="field" style="align-self:center">${String(Math.floor(totalS/60)).padStart(2,'0')}:${String(totalS%60).padStart(2,'0')}</div>
+    <div class="row2">
+      <button class="btn small ghost" data-act="swStart">START</button>
+      <button class="btn small ghost" data-act="swStop">STOP</button>
+      <button class="btn small ghost" data-act="swReset">RESET</button>
+    </div>
+    <p class="hint">Läuft weiter, auch wenn zwischenzeitlich eine andere Anzeige aufgerufen wird.</p>`;
+}
+
+function screenComp(side){
+  const m=MFD[side];
+  const anzeige = m.compBestaetigt ? 'ÜBERNOMMEN: '+m.compLast : (m.compInput||'0');
+  const tasten=['7','8','9','','4','5','6','','1','2','3','DEL','CLR','0','.','ENT'];
+  const keys=tasten.map(t=>{
+    if(t==='') return `<div class="key" style="visibility:hidden"></div>`;
+    if(t==='DEL') return `<div class="key warn" data-act="compDel">DEL</div>`;
+    if(t==='CLR') return `<div class="key warn" data-act="compClr">CLR</div>`;
+    if(t==='ENT') return `<div class="key" style="color:var(--green)" data-act="compEnt">ENT</div>`;
+    return `<div class="key" data-act="compDigit" data-arg="${t}">${t}</div>`;
+  }).join('');
+  return `<div class="stitle">COMP</div>
+    <div class="field" style="align-self:stretch;text-align:right;font-size:13px">${anzeige}</div>
+    <div class="keys3" style="margin-top:4px">${keys}</div>`;
+}
+
+function schemaKarte(rotation){
+  return `<g transform="rotate(${rotation} 50 50)">
+    <polygon points="0,0 100,0 100,38 60,55 100,70 100,100 0,100" fill="#1c2b1f"/>
+    <path d="M0,20 C25,30 35,55 30,100" fill="none" stroke="#3a6ea8" stroke-width="4"/>
+    <path d="M100,10 L55,45 L20,55" fill="none" stroke="#6b6b6b" stroke-width="1.4" stroke-dasharray="2 2"/>
+    <path d="M10,100 L45,60 L80,72" fill="none" stroke="#6b6b6b" stroke-width="1.4" stroke-dasharray="2 2"/>
+    <circle cx="30" cy="66" r="1.6" fill="#e6eef7"/>
+    <text x="33" y="66" fill="#e6eef7" font-size="5" font-family="var(--mono)">RUB</text>
+    <circle cx="72" cy="35" r="1.6" fill="#e6eef7"/>
+    <text x="75" y="35" fill="#e6eef7" font-size="5" font-family="var(--mono)">PUG</text>
+  </g>`;
+}
+function screenMap(side){
+  const m=MFD[side];
+  const rot = m.mapMode==='heading' ? -SYS.heading : 0;
+  const zs = 1/m.mapZoom;
+  return `<div class="stitle">MAP</div>
+    <div class="gaugewrap"><svg class="gauge" viewBox="0 0 100 100">
+      <clipPath id="mapclip"><circle cx="50" cy="50" r="46"/></clipPath>
+      <g clip-path="url(#mapclip)">
+        <g transform="translate(50 50) scale(${zs}) translate(-50 -50)">${schemaKarte(rot)}</g>
+      </g>
+      <circle cx="50" cy="50" r="46" fill="none" stroke="#2b3d50" stroke-width="1.5"/>
+      <polygon points="50,42 47,50 53,50" fill="#ffb020" transform="rotate(${m.mapMode==='heading'?0:SYS.heading} 50 50)"/>
+      <circle cx="50" cy="50" r="1.6" fill="#ffb020"/>
+      <text x="50" y="14" class="dlbl" style="font-size:6px">${m.mapMode==='heading'?'HDG UP':'N UP'}</text>
+    </svg></div>
+    <div class="row2">
+      <button class="btn small ghost" data-act="mapMode" data-arg="north">NORTH UP</button>
+      <button class="btn small ghost" data-act="mapMode" data-arg="heading">HEADING UP</button>
+    </div>
+    <div class="rowflex rowcenter" style="margin-top:4px">
+      <button class="microbtn" data-act="zoom" data-arg="-1">−</button>
+      <span class="hint" style="margin:0">ZOOM ${m.mapZoom}x</span>
+      <button class="microbtn" data-act="zoom" data-arg="1">+</button>
+    </div>
+    <p class="hint">Die moving map Funktion ist für die Eignungsfeststellung deaktiviert, die Karte steht hier fest.</p>`;
+}
+
+const INFO1_TEXTE={
+  ALPHA:'Startflugplatz: Piste 09, Länge 1800 m. Rollhalt Alpha aktiv.',
+  BRAVO:'Wetter am Zielort: Sicht 8 km, Wolkenuntergrenze 2500 Fuß, Wind 240 Grad 12 Knoten.',
+  CHARLIE:'Treibstoffreserve für den Rückflug: 45 Minuten Endreserve einplanen.',
+  DELTA:'Ausweichflugplatz: 15 nautische Meilen auf Kurs 090, Piste 14 verfügbar.',
+  ECHO:'Funkfrequenz Platzrunde: 122.800 Megahertz.',
+  FOXTROT:'Landeplatz Zielgebiet: Hindernis Windturbine 300 Fuß, 1 Meile nördlich.',
+  GOLF:'Verkehrslage: zwei weitere Hubschrauber im Übungsraum, Funk mithören.',
+  HOTEL:'Sammelpunkt bei Notlandung: Koordinaten im Missionsbriefing, Kanal 2.',
+  INDIA:'Höchstzulässige Startmasse für diesen Flug: innerhalb der Grenzwerte.',
+  JULIETT:'Nächster Kontrollpunkt: 6 nautische Meilen auf Kurs 315.',
+  KILO:'Notfrequenz: 121.500 Megahertz, ständig mitzuhören.',
+  LIMA:'Rückkehrzeit spätestens 30 Minuten vor Sonnenuntergang planen.'
+};
+function screenInfo1Menu(side){
+  const keys=Object.keys(INFO1_TEXTE).map(k=>`<div class="gcell" data-act="openInfo1" data-arg="${k}">INFORMATION ${k}</div>`).join('');
+  return `<div class="stitle">INFO 1</div><div class="grid2x6">${keys}</div>`;
+}
+function screenInfo1Detail(side){
+  const k=MFD[side].info1Sel;
+  return `<div class="stitle">INFORMATION ${k}</div>
+    <p class="hint" style="color:var(--text);font-size:11px;margin-top:10px;text-align:left">${INFO1_TEXTE[k]}</p>
+    <button class="btn small ghost" data-act="backInfo1">ZURÜCK</button>`;
+}
+function screenInfo2(side){
+  const zellen=Array.from({length:12}).map(()=>`<div class="gcell dead">•</div>`).join('');
+  return `<div class="stitle">INFO 2</div>
+    <div class="grid2x6">${zellen}</div>
+    <p class="hint">In dieser Konfiguration nicht belegt.</p>`;
+}
+
+function screenTitelUndInhalt(side){
+  const s=MFD[side].screen;
+  if(s==='alarm') return screenAlarm(side);
+  if(s==='nav') return screenNav(side);
+  if(s==='comm') return screenComm(side);
+  if(s==='instru') return screenInstruMenu(side);
+  if(s==='instru_detail') return screenInstruDetail(side);
+  if(s==='threat') return screenThreat(side);
+  if(s==='clock') return screenClock(side);
+  if(s==='comp') return screenComp(side);
+  if(s==='map') return screenMap(side);
+  if(s==='info1') return screenInfo1Menu(side);
+  if(s==='info1_detail') return screenInfo1Detail(side);
+  if(s==='info2') return screenInfo2(side);
+  return '';
+}
+
+/* =========================================================
+   Bodenleiste, fuenf Fluglageinstrumente
+   ========================================================= */
+const STRIP=[
+  {key:'torque', name:'LEISTUNGSANZEIGE', engl:'torque meter',
+   klein:()=>svgTorque(SYS.main.torque), gross:()=>svgTorque(SYS.main.torque),
+   hint:'Skala 0 bis 3,5 kp/cm², Null unten, Skala im Uhrzeigersinn. Der obere Wert ist rot markiert und darf nicht überschritten werden. Für einen normalen Reiseflug mit 100 Knoten in gleichbleibender Höhe steht die Anzeige bei 2,0 kp/cm².'},
+  {key:'ias', name:'FAHRTMESSER', engl:'speed indicator',
+   klein:()=>svgIas(SYS.main.ias), gross:()=>svgIas(SYS.main.ias),
+   hint:'Fluggeschwindigkeit in Knoten, KIAS. Ein Knoten entspricht 1,852 Kilometer in der Stunde.'},
+  {key:'horizon', name:'KÜNSTLICHER HORIZONT', engl:'artificial horizon',
+   klein:()=>svgHorizon(SYS.main.pitch,SYS.main.bank,SYS.main.slip), gross:()=>svgHorizon(SYS.main.pitch,SYS.main.bank,SYS.main.slip),
+   hint:'Ein Strich der unteren Bankskala entspricht 10 Grad, ein Querstrich der Nickleiter entspricht 5 Grad. Darunter die Libelle: steht die Kugel links, ins linke Pedal treten, steht sie rechts, ins rechte. Immer wenn mit dem Pitch gearbeitet wird, muss mit den Pedalen für Drehmomentausgleich gesorgt werden.'},
+  {key:'alt', name:'HÖHENMESSER', engl:'altitude indicator',
+   klein:()=>SYS.altMode==='baro'?svgAltBaro(altBaroFt(),SYS.baro):svgAltRadar(SYS.altRadarFt),
+   gross:()=>SYS.altMode==='baro'?svgAltBaro(altBaroFt(),SYS.baro):svgAltRadar(SYS.altRadarFt),
+   hint:'Barometrisch: kleiner Zeiger Tausend Fuß, großer Zeiger Hundert Fuß, Höhe über dem Meeresspiegel. Die Höhe über Grund ist in der Regel geringer als die angezeigte Höhe. Radar: Höhe über Grund, logarithmische Skala, im bodennahen Bereich besonders genau.'},
+  {key:'vsi', name:'VARIOMETER', engl:'vertical speed indicator',
+   klein:()=>svgVsi(SYS.main.vsi), gross:()=>svgVsi(SYS.main.vsi),
+   hint:'Zeigt in Fuß pro Minute, wie schnell der Hubschrauber steigt oder sinkt. Ein Strich entspricht 100 Fuß.'}
+];
+function renderStrip(){
+  const el=document.getElementById('strip');
+  if(!el) return;
+  el.innerHTML=STRIP.map(s=>`<div class="stripitem" data-strip="${s.key}">${s.klein()}</div>`).join('');
+}
+
+/* =========================================================
+   Vergroesserungs-Overlay
+   ========================================================= */
+function openStripOverlay(key){
+  const s=STRIP.find(x=>x.key===key);
+  const box=document.getElementById('overlay');
+  const altUmschalt = key==='alt' ? `<button class="btn small ghost" data-act="altToggleMode">${SYS.altMode==='baro'?'AUF RADAR UMSCHALTEN':'AUF BAROMETRISCH UMSCHALTEN'}</button>` : '';
+  box.innerHTML=`<div class="box">
+      <div class="eyebrow">${s.engl.toUpperCase()}</div>
+      <h2 style="margin-top:4px">${s.name}</h2>
+      <div class="gaugewrap" style="margin-top:8px">${s.gross()}</div>
+      <p class="sub" style="margin-top:8px">${s.hint}</p>
+      ${altUmschalt}
+      <button class="btn" data-act="closeOverlay">SCHLIESSEN</button>
+    </div>`;
+  box.classList.remove('hidden');
+  box.dataset.stripkey=key;
+}
+function closeOverlay(){
+  const ov=document.getElementById('overlay');
+  ov.classList.add('hidden');
+  delete ov.dataset.stripkey;
+}
+
+/* =========================================================
+   Bildschirm zeichnen
+   ========================================================= */
+function renderScreen(side){
+  const el=document.getElementById('screeninner-'+side);
+  if(!el) return;
+  el.innerHTML=screenTitelUndInhalt(side);
+  const cols=document.querySelectorAll('#softL-'+side+' .softbtn, #softR-'+side+' .softbtn');
+  cols.forEach(b=>{
+    b.classList.toggle('active', b.dataset.arg===aktEbene(MFD[side].screen));
+  });
+}
+function aktEbene(screen){
+  if(screen==='instru_detail') return 'instru';
+  if(screen==='info1_detail') return 'info1';
+  return screen;
+}
+function refreshAll(){
+  renderScreen('L'); renderScreen('R'); renderAlarmLampe(); renderStrip();
+  if(training.active) renderTrainBar();
+  if(!document.getElementById('overlay').classList.contains('hidden')){
+    const k=document.getElementById('overlay').dataset.stripkey;
+    if(k) openStripOverlay(k);
+  }
+}
+function setScreen(side,key){ MFD[side].screen=key; }
+
+/* =========================================================
+   Aktionen
+   ========================================================= */
+const actions={
+  triggerAlarm:()=>stoerfallAusloesen(),
+  resetAlarm:()=>stoerfallZuruecksetzen(),
+  hdgAdj:(side,arg)=>{ SYS.heading=(((SYS.heading+ +arg)%360)+360)%360; },
+  bugAdj:(side,arg)=>{ SYS.bug=(((SYS.bug+ +arg)%360)+360)%360; },
+  commWhole:(side,arg)=>commAdjWhole(+arg),
+  commFrac:(side,arg)=>commAdjFrac(+arg),
+  commSwap:()=>commSwap(),
+  baroAdj:(side,arg)=>baroAdj(+arg),
+  openInstr:(side,arg)=>{ MFD[side].screen='instru_detail'; MFD[side].instruSel=arg; },
+  randomAll:()=>zufallsWerte(),
+  battToggle:()=>{ SYS.battery=!SYS.battery; },
+  genToggle:()=>{ SYS.generator=!SYS.generator; },
+  newThreat:()=>neueBedrohungslage(),
+  answerThreat:(side,arg)=>{ SYS.threatAntwort=+arg; },
+  swStart:(side)=>{ const sw=MFD[side].stopwatch; if(!sw.running){ sw.running=true; sw.startTs=Date.now(); } },
+  swStop:(side)=>{ const sw=MFD[side].stopwatch; if(sw.running){ sw.elapsedMs+=Date.now()-sw.startTs; sw.running=false; } },
+  swReset:(side)=>{ MFD[side].stopwatch={running:false,elapsedMs:0,startTs:0}; },
+  compDigit:(side,arg)=>{ const m=MFD[side]; if(m.compBestaetigt) return;
+    if(arg==='.' && m.compInput.indexOf('.')>=0) return;
+    if(m.compInput.length<10) m.compInput+=arg; },
+  compDel:(side)=>{ MFD[side].compInput=MFD[side].compInput.slice(0,-1); },
+  compClr:(side)=>{ MFD[side].compInput=''; },
+  compEnt:(side)=>{ const m=MFD[side]; if(!m.compInput) return;
+    m.compLast=m.compInput; m.compInput=''; m.compBestaetigt=true;
+    clearTimeout(m.compTimer);
+    m.compTimer=setTimeout(()=>{ m.compBestaetigt=false; refreshAll(); },1500); },
+  mapMode:(side,arg)=>{ MFD[side].mapMode=arg; },
+  zoom:(side,arg)=>{ MFD[side].mapZoom=clamp(MFD[side].mapZoom+(+arg),1,3); },
+  openInfo1:(side,arg)=>{ MFD[side].screen='info1_detail'; MFD[side].info1Sel=arg; },
+  backInfo1:(side)=>{ MFD[side].screen='info1'; },
+  altToggleMode:()=>{ SYS.altMode = SYS.altMode==='baro'?'radar':'baro'; },
+  closeOverlay:()=>closeOverlay()
+};
+
+actions.goto=(side,arg)=>{ setScreen(side,arg); };
+
+function handleScreenClick(side,e){
+  const el=e.target.closest('[data-act]');
+  if(!el) return;
+  const act=el.dataset.act, arg=el.dataset.arg;
+  if(actions[act]){ actions[act](side,arg); refreshAll(); if(training.active) pruefeAufgabe(); }
+}
+function handleOverlayClick(e){
+  const el=e.target.closest('[data-act]');
+  if(!el) return;
+  const act=el.dataset.act;
+  if(actions[act]){ actions[act](); refreshAll(); if(training.active) pruefeAufgabe(); }
+}
+
+/* =========================================================
+   Seitenaufbau
+   ========================================================= */
+function mfdBlockHtml(side,titel){
+  const lb=SCHALTER_LINKS.map(([k,l])=>`<div class="softbtn" data-act="goto" data-arg="${k}"><span class="tri"></span><span class="lbl">${l}</span></div>`).join('');
+  const rb=SCHALTER_RECHTS.map(([k,l])=>`<div class="softbtn" data-act="goto" data-arg="${k}"><span class="tri"></span><span class="lbl">${l}</span></div>`).join('');
+  return `<div class="mfdblock mfd-${side}">
+    <div class="mfdlabel"><span>MULTIFUNKTIONSDISPLAY <b>${titel}</b></span></div>
+    <div class="mfdhousing ${labelsSichtbar?'':'notlabeled'}" id="mfdhousing-${side}">
+      <div class="softcol left" id="softL-${side}">${lb}</div>
+      <div class="screenbox"><div class="screeninner" id="screeninner-${side}"></div></div>
+      <div class="softcol right" id="softR-${side}">${rb}</div>
+    </div>
+  </div>`;
+}
+
+function buildPage(){
+  app.innerHTML=`
+    <div id="trainzone"></div>
+    <div class="topbar">
+      <div>
+        <div class="eyebrow">EF III/HUB TRAINER</div>
+        <h1>Instrumentenbrett</h1>
+      </div>
+    </div>
+    <p class="sub introsub">Nachbildung des Instrumentenbretts aus der Lernunterlage. Jede Fläche ist antippbar.
+      Ein Wechsel zwischen Instrumentenanzeigen läuft immer über den Schalter INSTRU.</p>
+    <div class="compactbar">
+      <div class="row2" style="margin-top:10px">
+        <button class="pill ${labelsSichtbar?'on':''}" id="btnLabels">BESCHRIFTUNG ${labelsSichtbar?'AN':'AUS'}</button>
+        <button class="pill" id="btnTraining">ÜBUNGSMODUS</button>
+      </div>
+      <div class="malarmrow"><div class="malarm" id="malarm">MASTER ALARM</div></div>
+    </div>
+
+    <div class="consolegrid">
+      ${mfdBlockHtml('L','LINKS')}
+      ${mfdBlockHtml('R','RECHTS')}
+    </div>
+    <div class="card stripcard">
+      <div class="opt eyebrow" style="letter-spacing:2px">STÄNDIGE FLUGLAGEINSTRUMENTE</div>
+      <div class="strip" id="strip"></div>
+      <p class="sub" style="margin-top:6px">Antippen zum Vergrößern mit Erklärung.</p>
+    </div>
+  `;
+  document.getElementById('malarm').addEventListener('click',alarmQuittieren);
+  document.getElementById('btnLabels').addEventListener('click',()=>{
+    labelsSichtbar=!labelsSichtbar;
+    document.getElementById('mfdhousing-L').classList.toggle('notlabeled',!labelsSichtbar);
+    document.getElementById('mfdhousing-R').classList.toggle('notlabeled',!labelsSichtbar);
+    const b=document.getElementById('btnLabels');
+    b.classList.toggle('on',labelsSichtbar); b.textContent='BESCHRIFTUNG '+(labelsSichtbar?'AN':'AUS');
+  });
+  document.getElementById('btnTraining').addEventListener('click',trainingIntro);
+  ['L','R'].forEach(side=>{
+    document.getElementById('mfdhousing-'+side).addEventListener('click',e=>handleScreenClick(side,e));
+  });
+  const ov=document.createElement('div');
+  ov.className='overlay hidden'; ov.id='overlay';
+  document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{ if(e.target===ov) closeOverlay(); });
+  ov.addEventListener('click',handleOverlayClick);
+  document.getElementById('strip').addEventListener('click',e=>{
+    const el=e.target.closest('[data-strip]'); if(el) openStripOverlay(el.dataset.strip);
+  });
+  refreshAll();
+}
+
+/* =========================================================
+   Uebungsmodus
+   ========================================================= */
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]];} return a; }
+function seitname(side){ return side==='L'?'LINKS':'RECHTS'; }
+function tSeite(){ return Math.random()<.5?'L':'R'; }
+
+const AUFGABEN_POOL=[
+ ()=>{ const side=tSeite(), instr=pick(INSTR);
+   return { text:`Rufe auf MFD ${seitname(side)} die Anzeige ${instr.name} auf.`,
+     check:()=>MFD[side].screen==='instru_detail' && MFD[side].instruSel===instr.key }; },
+ ()=>{ const side=tSeite(); if(!SYS.alarm.active) stoerfallAusloesen();
+   return { text:`Der MASTER ALARM leuchtet. Rufe auf MFD ${seitname(side)} die Alarmtafel auf.`,
+     check:()=>MFD[side].screen==='alarm' }; },
+ ()=>{ const ziel=pick([950,980,1000,1008,1013,1020,1035,1050]);
+   return { text:`Stelle den Luftdruck auf ${ziel} hPa.`, check:()=>SYS.baro===ziel }; },
+ ()=>{ const whole=rnd(118,136), frac=pick([0,25,50,75,100,150,200,250,300,375,450,500,575,650,725,800,875,950]);
+   const ziel=Math.round((whole+frac/1000)*1000)/1000, side=tSeite();
+   return { text:`Lege auf MFD ${seitname(side)} ${ziel.toFixed(3)} als aktive Frequenz an.`,
+     check:()=>Math.abs(SYS.commActive-ziel)<0.001 }; },
+ ()=>{ const side=tSeite();
+   return { text:`Starte die Stoppuhr auf MFD ${seitname(side)}.`, check:()=>MFD[side].stopwatch.running }; },
+ ()=>{ const side=tSeite();
+   return { text:`Rufe auf MFD ${seitname(side)} den Kompass auf.`, check:()=>MFD[side].screen==='nav' }; },
+ ()=>{ return { text:`Wechsle den Höhenmesser auf die Radaranzeige.`, check:()=>SYS.altMode==='radar' }; },
+ ()=>{ const side=tSeite();
+   return { text:`Öffne auf MFD ${seitname(side)} die Karte und schalte auf heading up.`,
+     check:()=>MFD[side].screen==='map' && MFD[side].mapMode==='heading' }; },
+ ()=>{ const side=tSeite(), k=pick(Object.keys(INFO1_TEXTE));
+   return { text:`Rufe auf MFD ${seitname(side)} INFO 1 auf und öffne INFORMATION ${k}.`,
+     check:()=>MFD[side].screen==='info1_detail' && MFD[side].info1Sel===k }; },
+ ()=>{ if(!SYS.alarm.active) stoerfallAusloesen();
+   return { text:`Quittiere den MASTER ALARM.`, check:()=>SYS.alarm.active && SYS.alarm.ack }; },
+ ()=>{ const side=tSeite(), zahl=String(rnd(1000,9999));
+   return { text:`Trage auf MFD ${seitname(side)} über COMP die Zahl ${zahl} ein und bestätige mit ENT.`,
+     check:()=>MFD[side].compLast===zahl }; },
+ ()=>{ const side=tSeite(); neueBedrohungslage();
+   return { text:`Rufe auf MFD ${seitname(side)} die Bedrohungsanzeige auf und beantworte die angezeigte Frage richtig.`,
+     check:()=>MFD[side].screen==='threat' && SYS.threatAntwort===SYS.threatFrage.antwort }; }
+];
+
+const training={ active:false, factories:[], idx:0, results:[], currentTask:null, taskStart:0, given:false };
+
+function trainingIntro(){
+  const box=document.getElementById('overlay');
+  delete box.dataset.stripkey;
+  box.innerHTML=`<div class="box">
+    <div class="eyebrow">ÜBUNGSMODUS</div><h2 style="margin-top:4px">10 Aufgaben</h2>
+    <p class="sub" style="margin-top:6px">Die Aufgaben werden als Text eingeblendet. Gelöst wird durch tatsächliches Bedienen der Anzeigen, nicht durch Antworttippen. Die Zeit je Aufgabe wird gemessen.</p>
+    <button class="btn" data-act="trainingRun">START</button>
+    <button class="btn ghost" data-act="closeOverlay">ABBRECHEN</button>
+  </div>`;
+  box.classList.remove('hidden');
+}
+actions.trainingRun=()=>{ closeOverlay(); trainingStart(); };
+
+function trainingStart(){
+  training.active=true; training.idx=0; training.results=[];
+  training.factories=shuffle(AUFGABEN_POOL).slice(0,10);
+  iniAufgabe(); refreshAll();
+}
+function iniAufgabe(){
+  training.currentTask=training.factories[training.idx]();
+  training.taskStart=Date.now(); training.given=false;
+}
+function pruefeAufgabe(){
+  if(!training.active || training.given) return;
+  if(training.currentTask.check()){
+    training.given=true;
+    training.results.push({ok:true, ms:Date.now()-training.taskStart});
+    renderTrainBar(true);
+    setTimeout(weiterAufgabe,900);
+  }
+}
+function ueberspringen(){
+  if(!training.active||training.given) return;
+  training.given=true;
+  training.results.push({ok:false, ms:Date.now()-training.taskStart});
+  renderTrainBar(true);
+  setTimeout(weiterAufgabe,700);
+}
+function weiterAufgabe(){
+  training.idx++;
+  if(training.idx>=training.factories.length){ trainingEnde(); return; }
+  iniAufgabe(); refreshAll();
+}
+function ladeBesten(){ try{ const r=localStorage.getItem('mfd_uebung_v1'); return r?JSON.parse(r):[]; }catch(e){ return []; } }
+function trainingEnde(){
+  training.active=false;
+  const ok=training.results.filter(r=>r.ok).length;
+  const avg=Math.round(training.results.reduce((a,r)=>a+r.ms,0)/training.results.length);
+  const bisher=ladeBesten();
+  const best=bisher.slice().sort((a,b)=>b.score-a.score||a.avgMs-b.avgMs)[0];
+  bisher.push({t:Date.now(), score:ok, avgMs:avg});
+  while(bisher.length>20) bisher.shift();
+  try{ localStorage.setItem('mfd_uebung_v1',JSON.stringify(bisher)); }catch(e){}
+  document.getElementById('trainzone').innerHTML='';
+  const box=document.getElementById('overlay');
+  delete box.dataset.stripkey;
+  box.innerHTML=`<div class="box">
+    <div class="eyebrow">ÜBUNGSMODUS</div><h2 style="margin-top:4px">Durchgang beendet</h2>
+    <p class="sub" style="margin-top:6px">Trefferquote ${ok} von ${training.results.length}, im Schnitt ${(avg/1000).toFixed(1)} Sekunden je Aufgabe.</p>
+    ${best?`<p class="sub">Bisher bester Durchgang: ${best.score} Treffer, ${(best.avgMs/1000).toFixed(1)} s im Schnitt.</p>`:''}
+    <button class="btn" data-act="closeOverlay">SCHLIESSEN</button>
+  </div>`;
+  box.classList.remove('hidden');
+  refreshAll();
+}
+function renderTrainBar(zeigeErgebnis){
+  const el=document.getElementById('trainzone');
+  if(!el || !training.active){ if(el) el.innerHTML=''; return; }
+  const t=training.currentTask;
+  const sek=((Date.now()-training.taskStart)/1000).toFixed(0);
+  el.innerHTML=`<div class="trainbar">
+    <div class="top"><span>AUFGABE ${training.idx+1} VON ${training.factories.length}</span><span class="time">${sek}s</span></div>
+    <div class="task">${t.text}</div>
+    ${zeigeErgebnis?`<div class="fb ok" style="margin-top:6px">Erledigt.</div>`:`<button class="btn small ghost" id="btnSkip">ÜBERSPRINGEN</button>`}
+  </div>`;
+  if(!zeigeErgebnis){ const b=document.getElementById('btnSkip'); if(b) b.addEventListener('click',ueberspringen); }
+}
+
+/* =========================================================
+   Start
+   ========================================================= */
+window.SYS=SYS; window.MFD=MFD; window.training=training; window.altBaroFt=altBaroFt; window.radarDeg=radarDeg; window.svgIas=svgIas; window.svgTorque=svgTorque; window.svgVsi=svgVsi; window.svgVoltage=svgVoltage; window.INSTR=INSTR;
+buildPage();
+setInterval(()=>{
+  if(MFD.L.screen==='clock') renderScreen('L');
+  if(MFD.R.screen==='clock') renderScreen('R');
+  if(training.active) renderTrainBar(training.given);
+},300);
+</script>
+</body>
+</html>
