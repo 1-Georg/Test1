@@ -85,6 +85,8 @@ h2{font-size:16px;font-weight:700;margin-bottom:2px;letter-spacing:.3px}
 .missionzeile{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--cyan);
   text-align:center;margin:2px 0 4px;flex:none}
 .infotab{flex:1;display:flex;flex-direction:column;justify-content:center;gap:5px;padding:2px 0}
+.inforow.dauer{border-top:1px solid #26313d;border-bottom:none;margin-top:2px}
+.inforow.dauer .infolbl::after{content:' · gilt immer';opacity:.65}
 .inforow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
   border-bottom:1px solid #1b2530;padding:5px 2px}
 .infolbl{font-size:9px;color:var(--dim);letter-spacing:.3px;text-align:left}
@@ -875,6 +877,9 @@ function screenMap(side){
 
 /* Jede Information traegt denselben Parametersatz mit eigenen Werten.
    Im Auswahlverfahren wird ein Buchstabe angesagt, ab dann gelten dessen Werte. */
+/* Die maximale Querneigung ist im Verfahren fest vorgegeben und gilt
+   für jeden Auftrag gleichermaßen. */
+const MAX_BANK=20;
 const INFO1_KEYS=['ALPHA','BRAVO','CHARLIE','DELTA','ECHO','FOXTROT',
                   'GOLF','HOTEL','INDIA','JULIETT','KILO','LIMA'];
 /* Die Werte entstehen aus der Missionsnummer. Der Pruefer-Simulator auf dem
@@ -901,63 +906,93 @@ function datensaetzeBauen(missionsnummer){
   const speeds=mischenSeed([60,70,80,85,90,100,110,115,120,130,140,150],r);
   const dirs  =mischenSeed([10,40,70,100,130,160,190,220,250,280,310,340],r);
   const winde =mischenSeed([4,6,8,10,12,14,16,18,20,22,25,28],r);
-  const banks =mischenSeed([10,15,20,25,30,35,40,45,15,20,25,30],r);
+  // Je Kennung gilt entweder eine Obergrenze oder ein Band, beides zusammen
+  // waere widerspruechlich. Die Art wird aus der Missionsnummer bestimmt.
   const daten={};
   INFO1_KEYS.forEach((k,i)=>{
-    daten[k]={ hoehe:hoehen[i], band:baender[i], speed:speeds[i], dir:dirs[i], wind:winde[i], bank:banks[i] };
+    const alsBand = r()<0.5;
+    daten[k]= alsBand
+      ? { art:'band', band:baender[i], speed:speeds[i], dir:dirs[i], wind:winde[i] }
+      : { art:'max',  hoehe:hoehen[i], speed:speeds[i], dir:dirs[i], wind:winde[i] };
   });
   return daten;
 }
 /* Auftragstexte, exakt dieselbe Formel wie im Pruefer-Simulator.
    Dadurch steht hier derselbe Auftrag, den der Pruefer zur Kennung ansagt. */
-const ZEILEN=['a','b','c','d','e','f'];
-const SPALTEN=[1,2,3,4,5,6,7,8];
-const ORTE=[
-  {n:'Krankenhaus',g:'n'}, {n:'Unfallstelle',g:'f'}, {n:'Landeplatz',g:'m'},
-  {n:'Sportplatz',g:'m'},  {n:'Brücke',g:'f'},       {n:'Bahnhof',g:'m'},
-  {n:'Insel',g:'f'},       {n:'Flussufer',g:'n'},    {n:'Industriegebiet',g:'n'},
-  {n:'Parkplatz',g:'m'},   {n:'Waldlichtung',g:'f'}, {n:'Schulhof',g:'m'},
-  {n:'Hafenbecken',g:'n'}, {n:'Kreuzung',g:'f'},     {n:'Feuerwache',g:'f'},
-  {n:'Umspannwerk',g:'n'}
+/* Ziele nach der offiziellen Prüfungskarte, Raum Ottawa und Hull.
+   Reportingpoints, Ortschaften, markante Ziele und Straßen wie im Original. */
+const RPS=[5,10,11,12,13,14,15,16,17,20,21,22,23,24,26,30,31,32,34,80];
+const ORTSCHAFTEN=[
+  {n:'Hull',g:'n'}, {n:'Aylmer',g:'n'}, {n:'Britannia',g:'n'},
+  {n:'Rockcliffe',g:'n'}, {n:'Eastview',g:'n'}, {n:'Uplands',g:'n'}, {n:'Leitrim',g:'n'}
 ];
+/* Jedes Ziel liegt an seinem tatsächlichen Ort auf der Karte. Der Ort wird
+   mitgeführt, damit keine widersprüchlichen Angaben entstehen. */
+const ZIELE=[
+  {n:'Central Hospital',g:'n',ort:'Ottawa'},
+  {n:'Football Stadium',g:'n',ort:'Ottawa'},
+  {n:'Baseball Stadium',g:'n',ort:'Eastview'},
+  {n:'Ottawa International Airport',g:'m',ort:'Uplands'},
+  {n:'CFB Ottawa North',g:'n',ort:'Rockcliffe'},
+  {n:'Finanzdistrikt',g:'m',ort:'Hull'},
+  {n:'Triple Tower',g:'m',ort:'Rockcliffe'},
+  {n:'Kirche',g:'f',ort:'Eastview'},
+  {n:'Yachthafen',g:'m',ort:'Britannia'}
+];
+const GEWAESSER=[
+  {n:'Ottawa River',g:'m'}, {n:'Rideau River',g:'m'},
+  {n:'Mud Lake',g:'m'},     {n:'Bate Island',g:'f'}
+];
+const STRASSEN=['Queensway','Carling Avenue','Richmond Road','Baseline Road',
+  'Woodroffe Boulevard','Riverside Boulevard','Smyth Road','Main Street',
+  'St Laurent Boulevard','Scott Street','Chemin Aylmer','Transitway'];
 const zuDat=o=>(o.g==='f'?'zur ':'zum ')+o.n;
 const anDat=o=>(o.g==='f'?'an der ':'am ')+o.n;
 const akkA =o=>(o.g==='f'?'die ':o.g==='m'?'den ':'das ')+o.n;
+const inOrt=o=>(o.g==='f'?'in der ':'in ')+o.n;
 const PERSONEN=[
   {akk:'den Arzt',dat:'dem Arzt'}, {akk:'den Verletzten',dat:'dem Verletzten'},
   {akk:'den Techniker',dat:'dem Techniker'}, {akk:'den Beobachter',dat:'dem Beobachter'},
   {akk:'die Sanitäterin',dat:'der Sanitäterin'}
 ];
 const FRACHT=[
-  {akk:'die Medikamente',dat:'den Medikamenten'}, {akk:'das Ersatzteil',dat:'dem Ersatzteil'},
-  {akk:'die Ausrüstung',dat:'der Ausrüstung'}, {akk:'die Blutkonserven',dat:'den Blutkonserven'}
+  {akk:'die Medikamente',  dat:'den Medikamenten',  pro:'sie'},
+  {akk:'das Ersatzteil',   dat:'dem Ersatzteil',    pro:'es'},
+  {akk:'die Ausrüstung',   dat:'der Ausrüstung',    pro:'sie'},
+  {akk:'die Blutkonserven',dat:'den Blutkonserven', pro:'sie'}
 ];
 function auftragTextBauen(missionsnummer, kennung){
   const i=INFO1_KEYS.indexOf(kennung);
   const r=mulberry32(missionsnummer*100+i*7+3);
-  const zeile=ZEILEN[Math.floor(r()*ZEILEN.length)];
-  const spalte=SPALTEN[Math.floor(r()*SPALTEN.length)];
-  const feld=zeile+spalte;
-  const ort=ORTE[Math.floor(r()*ORTE.length)];
-  const F=`in Feld <b class="zielfeld">${feld}</b>`;
+  const w=(arr)=>arr[Math.floor(r()*arr.length)];
+  const RP=n=>`<b class="zielfeld">RP ${n}</b>`;
+  const rp1=w(RPS);
+  let rp2=w(RPS); if(rp2===rp1) rp2=RPS[(RPS.indexOf(rp1)+7)%RPS.length];
+  const ziel=w(ZIELE), ort=w(ORTSCHAFTEN), gew=w(GEWAESSER), str=w(STRASSEN);
   const art=r();
-  let text;
-  if(art<.30){
-    const p=PERSONEN[Math.floor(r()*PERSONEN.length)];
-    text=`Fliegen Sie ${zuDat(ort)} ${F} und nehmen Sie dort ${p.akk} auf.`;
-  } else if(art<.55){
-    const p=PERSONEN[Math.floor(r()*PERSONEN.length)];
-    text=`Bringen Sie ${p.akk} ${zuDat(ort)} ${F} und setzen Sie dort ab.`;
+  let text, feld='RP '+rp1;
+  if(art<.18){
+    const p=w(PERSONEN);
+    text=`Fliegen Sie ${zuDat(ziel)} in ${ziel.ort} und nehmen Sie dort ${p.akk} auf.`;
+  } else if(art<.34){
+    const p=w(PERSONEN);
+    text=`Bringen Sie ${p.akk} vom ${RP(rp1)} ${zuDat(ziel)} und setzen Sie dort ab.`;
+    feld='RP '+rp1;
+  } else if(art<.48){
+    const f=w(FRACHT);
+    text=`Nehmen Sie ${f.akk} am ${RP(rp1)} auf und bringen Sie ${f.pro} ${zuDat(ziel)}.`;
+  } else if(art<.60){
+    text=`Fliegen Sie zum ${RP(rp1)}, dann weiter zum ${RP(rp2)} und melden Sie sich dort.`;
+    feld='RP '+rp1;
   } else if(art<.72){
-    const f=FRACHT[Math.floor(r()*FRACHT.length)];
-    text=`Nehmen Sie ${f.akk} ${anDat(ort)} ${F} auf.`;
-  } else if(art<.86){
-    const f=FRACHT[Math.floor(r()*FRACHT.length)];
-    text=`Liefern Sie ${f.akk} ${zuDat(ort)} ${F} ab.`;
-  } else if(art<.95){
-    text=`Überfliegen Sie das Gebiet um ${akkA(ort)} ${F} und melden Sie Ihre Beobachtung.`;
+    text=`Suchen Sie den Abschnitt ${akkA(gew)} zwischen ${RP(rp1)} und ${RP(rp2)} ab.`;
+  } else if(art<.82){
+    text=`Folgen Sie der ${str} von ${ort.n} bis zum ${RP(rp1)}.`;
+  } else if(art<.90){
+    text=`Überfliegen Sie ${ziel.ort} und melden Sie die Lage ${anDat(ziel)}.`;
+    feld=ziel.ort;
   } else {
-    text=`Fliegen Sie ${zuDat(ort)} ${F} und warten Sie dort auf weitere Anweisungen.`;
+    text=`Halten Sie am ${RP(rp1)} und warten Sie dort auf weitere Anweisungen.`;
   }
   return { text, feld };
 }
@@ -970,19 +1005,21 @@ let INFO1_DATEN = datensaetzeBauen(1013);
    jederzeit unter INFO 1 bei der zugehoerigen Kennung nachzulesen.
    ========================================================= */
 const P_STUFEN={
-  einweisung:{ name:'EINWEISUNG', hint:'ohne Unterbrechung', spanne:[240,360],
-               unterbrechung:0, tiefe:0, textSekunden:0, zusatzfrage:0 },
-  grund:     { name:'GRUNDSTUFE', hint:'einfache Unterbrechung', spanne:[210,300],
-               unterbrechung:.25, tiefe:1, textSekunden:20, zusatzfrage:0 },
-  steigerung:{ name:'STEIGERUNG', hint:'zwei Ebenen', spanne:[180,270],
-               unterbrechung:.40, tiefe:2, textSekunden:12, zusatzfrage:0 },
-  pruefung:  { name:'PRÜFUNGSNAH', hint:'drei Ebenen, Wertabfrage', spanne:[150,240],
-               unterbrechung:.55, tiefe:3, textSekunden:8, zusatzfrage:.2 }
+  einweisung:{ name:'EINWEISUNG', hint:'ohne Notruf', spanne:[600,840],
+               notruf:0,   notFenster:[0,0],     tiefe:0, textSekunden:0, zusatzfrage:0 },
+  grund:     { name:'GRUNDSTUFE', hint:'selten ein Notruf', spanne:[540,780],
+               notruf:.15, notFenster:[300,480], tiefe:1, textSekunden:25, zusatzfrage:0 },
+  steigerung:{ name:'STEIGERUNG', hint:'zwei Ebenen', spanne:[480,720],
+               notruf:.25, notFenster:[260,420], tiefe:2, textSekunden:16, zusatzfrage:0 },
+  pruefung:  { name:'PRÜFUNGSNAH', hint:'drei Ebenen, Wertabfrage', spanne:[450,660],
+               notruf:.35, notFenster:[220,380], tiefe:3, textSekunden:10, zusatzfrage:.2 }
 };
+
+
 const P={
   laeuft:false, stufe:'grund', dauerMin:20, sprache:false,
   aktiv:null, stapel:[], dringend:false,
-  laufStart:0, ereignisBis:0, textOffen:true, verdeckenTimer:null,
+  laufStart:0, ereignisBis:0, notrufBis:null, textOffen:true, verdeckenTimer:null,
   erledigt:0, zeiten:[], abfragen:0, abfragenRichtig:0,
   wertfragen:0, wertfragenRichtig:0, nachgeschaut:0,
   protokoll:[], phase:'aus', frage:null, tick:null
@@ -1019,7 +1056,16 @@ function pSprechsatz(a,dringend,rueckkehr){
   return (dringend?'Dringender Notruf. Brechen Sie ab. Neuer Auftrag. ':'Neuer Auftrag. ')
     + 'Info '+KWORT(a.kennung)+'. '+roh.replace('Feld '+a.feld,'Feld '+feldG);
 }
-function pFrist(){ const s=P_STUFEN[P.stufe]; P.ereignisBis=Date.now()+rnd(s.spanne[0],s.spanne[1])*1000; }
+function pFrist(){
+  const s=P_STUFEN[P.stufe];
+  P.ereignisBis = Date.now() + rnd(s.spanne[0],s.spanne[1])*1000;
+  // Ein Notruf ist die Ausnahme und hat einen eigenen, frueheren Zeitpunkt.
+  // Er kommt nur, wenn noch Platz auf dem Stapel ist.
+  P.notrufBis = null;
+  if(s.notruf>0 && P.stapel.length < s.tiefe && Math.random() < s.notruf){
+    P.notrufBis = Date.now() + rnd(s.notFenster[0],s.notFenster[1])*1000;
+  }
+}
 function pVerdeckenPlanen(){
   P.textOffen=true; clearTimeout(P.verdeckenTimer);
   const s=P_STUFEN[P.stufe];
@@ -1039,24 +1085,24 @@ function pEreignis(vomAnwender){
       pLog('Info '+KBUCHST(P.aktiv.kennung)+' als erledigt gemeldet'); }
     else pLog('Zeit abgelaufen bei Info '+KBUCHST(P.aktiv.kennung));
   }
-  if(P.stapel.length>0){
-    if(P.stapel.length>=s.tiefe || Math.random()<.4){ pRueckkehr(); return; }
-  }
-  if(P.stapel.length<s.tiefe && Math.random()<s.unterbrechung && P.aktiv){
-    P.stapel.push(P.aktiv);
-    pLog('Info '+KBUCHST(P.aktiv.kennung)+' zurückgestellt');
-    const a=pAuftrag(pFreieKennung());
-    P.aktiv=a; P.dringend=true;
-    pLog('Dringend: Info '+KBUCHST(a.kennung)+' erteilt');
-    pVerdeckenPlanen(); pFrist(); pSprich(pSprechsatz(a,true,false));
-    if(navigator.vibrate) try{ navigator.vibrate([60,50,60]); }catch(e){}
-    renderBanner();
-  } else {
-    const a=pAuftrag(pFreieKennung());
-    P.aktiv=a; P.dringend=false;
-    pLog('Auftrag Info '+KBUCHST(a.kennung)+' erteilt');
-    pVerdeckenPlanen(); pFrist(); pSprich(pSprechsatz(a,false,false)); renderBanner();
-  }
+  // Liegt etwas auf dem Stapel, wird es bevorzugt wieder abgearbeitet
+  if(P.stapel.length>0 && (P.stapel.length>=s.tiefe || Math.random()<.55)){ pRueckkehr(); return; }
+  const a=pAuftrag(pFreieKennung());
+  P.aktiv=a; P.dringend=false;
+  pLog('Auftrag Info '+KBUCHST(a.kennung)+' erteilt');
+  pVerdeckenPlanen(); pFrist(); pSprich(pSprechsatz(a,false,false)); renderBanner();
+}
+function pNotruf(){
+  const s=P_STUFEN[P.stufe];
+  if(!P.aktiv || P.stapel.length>=s.tiefe){ P.notrufBis=null; return; }
+  P.stapel.push(P.aktiv);
+  pLog('Info '+KBUCHST(P.aktiv.kennung)+' zurückgestellt');
+  const a=pAuftrag(pFreieKennung());
+  P.aktiv=a; P.dringend=true;
+  pLog('Notruf: Info '+KBUCHST(a.kennung)+' erteilt');
+  pVerdeckenPlanen(); pFrist(); pSprich(pSprechsatz(a,true,false));
+  if(navigator.vibrate) try{ navigator.vibrate([60,50,60]); }catch(e){}
+  renderBanner();
 }
 function pRueckkehr(){
   P.frage={ ziel:P.stapel[P.stapel.length-1], gewaehlt:null, phase:'kennung' };
@@ -1080,11 +1126,10 @@ function pKennungAntwort(k){
   }, richtig?1100:1900);
 }
 const P_WERTFRAGEN=[
-  {frage:'Welche maximale Flughöhe galt dort?', feld:'hoehe', einheit:'ft'},
-  {frage:'Welche Untergrenze hatte das Höhenband dort?', feld:'bandU', einheit:'ft'},
+  {frage:'Welche Höhengrenze galt dort? Bei einem Band die Obergrenze.', feld:'hoehe', einheit:'ft'},
   {frage:'Welche maximale Geschwindigkeit galt dort?', feld:'speed', einheit:'kt'},
   {frage:'Welche Windrichtung galt dort?', feld:'dir', einheit:'Grad'},
-  {frage:'Welche maximale Querneigung galt dort?', feld:'bank', einheit:'Grad'}
+  {frage:'Welche Windstärke galt dort?', feld:'wind', einheit:'kt'}
 ];
 function pWertfrage(){
   P.frage.phase='wert'; P.frage.wert=pick(P_WERTFRAGEN); P.frage.wertErgebnis=null;
@@ -1093,7 +1138,10 @@ function pWertfrage(){
 function pWertAntwort(eingabe){
   const f=P.frage, w=f.wert;
   const dz=INFO1_DATEN[f.ziel.kennung];
-  const soll = w.feld==='bandU' ? dz.band[0] : dz[w.feld];
+  let soll;
+  if(w.feld==='bandU') soll = dz.art==='band' ? dz.band[0] : dz.hoehe;
+  else if(w.feld==='hoehe') soll = dz.art==='band' ? dz.band[1] : dz.hoehe;
+  else soll = dz[w.feld];
   const ist=parseInt(String(eingabe).replace(/\D/g,''),10);
   const richtig=ist===soll;
   P.wertfragen++; if(richtig) P.wertfragenRichtig++;
@@ -1129,6 +1177,7 @@ function pTick(){
   if(P.phase!=='lauf'){ renderBanner(); return; }
   const j=Date.now();
   if(j-P.laufStart>=P.dauerMin*60000){ pEnde(); return; }
+  if(P.notrufBis && j>=P.notrufBis){ P.notrufBis=null; pNotruf(); return; }
   if(j>=P.ereignisBis){ pEreignis(false); return; }
   renderBanner();
 }
@@ -1164,12 +1213,13 @@ function screenInfo1Detail(side){
   return `<div class="stitle">INFORMATION ${k}</div>
     <div class="auftragbox">${auf.text}</div>
     <div class="infotab">
-      <div class="inforow"><span class="infolbl">Maximale Flughöhe</span><span class="infoval">${d.hoehe} ft</span></div>
-      <div class="inforow"><span class="infolbl">Höhenband</span><span class="infoval">${d.band[0]} bis ${d.band[1]} ft</span></div>
+      ${d.art==='band'
+        ? `<div class="inforow"><span class="infolbl">Höhenband</span><span class="infoval">${d.band[0]} bis ${d.band[1]} ft</span></div>`
+        : `<div class="inforow"><span class="infolbl">Maximale Flughöhe</span><span class="infoval">${d.hoehe} ft</span></div>`}
       <div class="inforow"><span class="infolbl">Maximale Geschwindigkeit</span><span class="infoval">${d.speed} kt</span></div>
       <div class="inforow"><span class="infolbl">Windrichtung</span><span class="infoval">${pad3(d.dir)}°</span></div>
       <div class="inforow"><span class="infolbl">Windstärke</span><span class="infoval">${d.wind} kt</span></div>
-      <div class="inforow"><span class="infolbl">Maximale Querneigung</span><span class="infoval">${d.bank}°</span></div>
+      <div class="inforow dauer"><span class="infolbl">Maximale Querneigung</span><span class="infoval">${MAX_BANK}°</span></div>
     </div>
     <button class="btn small ghost" data-act="backInfo1">ZURÜCK</button>
     <p class="hint">Diese Werte gelten, solange der Buchstabe ${k} angesagt ist.</p>`;
