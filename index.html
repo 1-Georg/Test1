@@ -270,7 +270,7 @@ const norm=h=>{h=((h%360)+360)%360;return h===0?360:h;};
 let uid=0;
 
 let CFG={bloecke:8, dichte:'normal', zeit:30, stufe:'mittel', ton:true,
-         typen:{dreisatz:true, nav:true, flug:true, instr:true, reihe:false, englisch:true, wuerfel:true, reaktion:true, steuern:false, hoeren:false}, sprechtempo:0.92, stimmquelle:'geraet', onlineStimme:'de-DE-Wavenet-F',
+         typen:{dreisatz:true, nav:true, flug:true, instr:true, reihe:false, englisch:true, wuerfel:true, reaktion:true, steuern:false, hoeren:false, einmaleins:false}, sprechtempo:0.92, stimmquelle:'geraet', onlineStimme:'de-DE-Wavenet-F',
          merk:{buchstabe:true, instrument:true, farbe:true}, ablese:true, doppel:false};
 let S=null, tickId=null, keyMode=null, contFn=null, toIds=[];
 function later(fn,ms){ const id=setTimeout(fn,ms); toIds.push(id); return id; }
@@ -543,12 +543,19 @@ function svgHorizon(pitch,bank,slip){
   const id='h'+(++uid), p=pitch*1.6;
   const P=(deg,r)=>[50+r*Math.cos((deg-90)*Math.PI/180), 50+r*Math.sin((deg-90)*Math.PI/180)];
   let sc='';
-  // Bankskala unten am Gehäuse, Striche alle 10 Grad bis 60 Grad
+  // Bankskala unten am Gehäuse. Laut Lernunterlage entspricht ein Strich
+  // 10 Grad. Zur besseren Lesbarkeit sind 30 und 60 lang und beschriftet.
   for(let d=10; d<=60; d+=10){
     [d,-d].forEach(x=>{
-      const w=180-x;
-      const a1=P(w,33.5), a2=P(w,40.5);
-      sc+=`<line x1="${a1[0]}" y1="${a1[1]}" x2="${a2[0]}" y2="${a2[1]}" stroke="#e6eef7" stroke-width="${x%30===0?1.5:1}"/>`;
+      const w=180-x, gross=(Math.abs(x)===30||Math.abs(x)===60);
+      const a1=P(w, gross?30.5:34), a2=P(w,40.5);
+      sc+=`<line x1="${a1[0]}" y1="${a1[1]}" x2="${a2[0]}" y2="${a2[1]}"
+             stroke="#e6eef7" stroke-width="${gross?2.2:1.1}"/>`;
+      if(gross){
+        const t=P(w,25.5);
+        sc+=`<text x="${t[0]}" y="${t[1]}" fill="#cdd8e4" font-size="6.4" font-weight="700"
+               text-anchor="middle" dominant-baseline="middle" font-family="var(--mono)">${Math.abs(x)}</text>`;
+      }
     });
   }
   // Nullmarke unten
@@ -655,7 +662,9 @@ function genInstr(){
     alt: leicht ? rnd(1,19)*500 : rnd(2,39)*100 + (CFG.stufe==='schwer'?rnd(0,9)*1000:0),
     ias: leicht ? rnd(3,19)*10 : rnd(6,19)*10,
     hdg: leicht ? rnd(1,12)*30 : rnd(1,36)*10,
-    bank: pick(leicht?[0,10,20,30]:[0,10,15,20,30,45,60])*(Math.random()<.5?-1:1),
+    // Nur Werte, die auf der Skala tatsächlich ablesbar sind. Ein Strich
+    // entspricht 10 Grad, Zwischenwerte wären nicht bestimmbar.
+    bank: pick(leicht?[0,10,20,30]:[0,10,20,30,40,50,60])*(Math.random()<.5?-1:1),
     pitch: pick(leicht?[0,10,-10]:[0,5,10,15,-5,-10,-15])
   };
   if(v.alt>9900) v.alt=9900;
@@ -698,7 +707,7 @@ function genInstr(){
     return Object.assign(basis,{frage:'Wie viel Grad Querneigung zeigt der künstliche Horizont?',einheit:'Grad',typ:'zahl',loesung:Math.abs(v.bank),
       weg:[`<b>1</b>  Die Marke steht auf ${Math.abs(v.bank)} Grad`,
            `<b>2</b>  Querneigung <b>${Math.abs(v.bank)}</b> Grad nach ${v.bank>0?'rechts':'links'}`],
-      hinweis:'Der Zeiger der Kreiselscheibe läuft gegen die feste Skala mit Marken bei 10, 20, 30, 45 und 60 Grad. Abgelesen wird der Betrag, die Richtung zeigt die Horizontlinie.'});
+      hinweis:'Der gelbe Zeiger läuft gegen die feste Skala am unteren Rand. Ein Strich entspricht 10 Grad, die langen Striche bei 30 und 60 sind beschriftet. Abgelesen wird der Betrag, die Richtung zeigt die Horizontlinie.'});
   }
   return Object.assign(basis,{frage:'In welche Richtung ist das Flugzeug geneigt?',typ:'wahl',optionen:['LINKS','RECHTS'],loesung:v.bank>0?'RECHTS':'LINKS',
     weg:[`<b>1</b>  Die Horizontlinie fällt nach ${v.bank>0?'links':'rechts'} ab`,
@@ -1700,8 +1709,8 @@ function renderReaktion(){
   clearTimers(); keyMode=null;
   if(!S||!S.farbe) return;          // Lauf bereits beendet
   const P={leicht:{anz:12,max:1,s1:1600,s2:1350,falle:0,p:[520,950],gr:[54,72],aehnlich:0,wechsel:0},
-           mittel:{anz:16,max:3,s1:1450,s2:1200,falle:.16,p:[420,780],gr:[44,62],aehnlich:.35,wechsel:0},
-           schwer:{anz:20,max:4,s1:1350,s2:1050,falle:.24,p:[340,650],gr:[36,54],aehnlich:.55,wechsel:.5}}[CFG.stufe];
+           mittel:{anz:16,max:3,s1:1450,s2:1200,falle:.16,p:[420,780],gr:[44,62],aehnlich:0,wechsel:0},
+           schwer:{anz:20,max:4,s1:1350,s2:1050,falle:.24,p:[340,650],gr:[36,54],aehnlich:0,wechsel:.5}}[CFG.stufe];
   // Auf schwer wechselt die gueltige Farbe einmal mitten in der Runde
   const wechselBei = P.wechsel && Math.random()<P.wechsel ? Math.floor(P.anz*rnd(45,60)/100) : -1;
   let zielFarbe = S.farbe;
@@ -1711,7 +1720,7 @@ function renderReaktion(){
     <div class="card">
       <div class="qhead"><span class="tag">REAKTION</span><span class="tclock mono">BLOCK ${S.block}/${CFG.bloecke}</span></div>
       <p class="question">Kreise in der gemerkten Farbe antippen.</p>
-      <p class="regel">${P.falle?'Kreise mit weißem Rand sind gesperrt und bleiben unberührt. ':''}${P.aehnlich?'Es treten ähnliche Farbtöne auf. ':''}${P.wechsel?'Die gültige Farbe kann sich mitten in der Runde ändern. ':''}Das Tempo zieht im Verlauf der Runde an.</p>
+      <p class="regel">${P.falle?'Kreise mit weißem Rand sind gesperrt und bleiben unberührt. ':''}${P.wechsel?'Die gültige Farbe kann sich mitten in der Runde ändern. ':''}Das Tempo zieht im Verlauf der Runde an.</p>
       <div class="feld" id="feld"><div class="fwechsel" id="farbwechsel"></div></div>
       <div class="zaehler"><span id="z1">0 Treffer</span><span id="z2">0 Fehlgriffe</span></div>
       <div class="tbar"><span id="tbf" style="width:0%"></span></div>
@@ -2076,6 +2085,12 @@ function spracheFreischalten(){
 /* Zahlen so schreiben, dass sie klar gesprochen werden */
 function zifferWeise(n){ return String(n).split('').join(' '); }
 
+/* Ansagen werden nur gesprochen, wenn die Höraufgabe aktiv ist. Dann kommen
+   Kennung und Farbe wie im Funkverkehr zusätzlich über die Stimme. */
+function natoWort(b){ const w=NATO[b]||b; return w.charAt(0)+w.slice(1).toLowerCase(); }
+/* Grossbuchstaben werden von Sprachausgaben oft einzeln buchstabiert */
+function sprechWort(x){ return String(x).charAt(0)+String(x).slice(1).toLowerCase(); }
+function ansagen(text){ if(CFG.typen.hoeren) sprich(text); }
 const HOER_ARTEN=[
   ()=>{ const f=(rnd(1180,1369)/10).toFixed(1), k=rnd(0,35)*10;
     return { text:`Frequenz ${zifferWeise(f.replace('.',''))} Komma. Neuer Kurs ${zifferWeise(pad3(k))}.`,
@@ -2115,6 +2130,49 @@ function genHoeren(){
     hinweis:'Der Funkspruch wird einmal vorgelesen. Wiederholen ist möglich, wird aber vermerkt.' };
 }
 
+
+/* =========================================================
+   Einmaleins, klein bis 10 und gross bis 20
+   ========================================================= */
+function genEinmaleins(){
+  const gross = CFG.stufe==='leicht' ? false
+              : CFG.stufe==='mittel' ? Math.random()<.45 : Math.random()<.75;
+  const obere = gross?20:10;
+  const a=rnd(2,obere), b=rnd(2,obere), pr=a*b;
+  const art=pick(['mal','geteilt','luecke','quadrat','kette']);
+  if(art==='quadrat'){
+    const z=rnd(gross?11:2, obere);
+    return {art:'einmaleins', frage:`Wie viel ist ${z} mal ${z}?`, loesung:z*z,
+      weg:[`<b>1</b>  ${z} · ${z}`, `<b>2</b>  Ergebnis <b>${z*z}</b>`],
+      hinweis:'Quadratzahlen lohnt es sich auswendig zu können.'};
+  }
+  if(art==='geteilt'){
+    return {art:'einmaleins', frage:`Wie viel ist ${pr} geteilt durch ${a}?`, loesung:b,
+      weg:[`<b>1</b>  ${a} · ? = ${pr}`, `<b>2</b>  ${pr} : ${a} = <b>${b}</b>`],
+      hinweis:'Rückwärts denken: welche Zahl mal dem Teiler ergibt die Zahl?'};
+  }
+  if(art==='luecke'){
+    return {art:'einmaleins', frage:`${a} mal welche Zahl ergibt ${pr}?`, loesung:b,
+      weg:[`<b>1</b>  ${a} · ? = ${pr}`, `<b>2</b>  ? = ${pr} : ${a} = <b>${b}</b>`],
+      hinweis:'Die Lücke findest du über die Umkehrung, also durch Teilen.'};
+  }
+  if(art==='kette'){
+    const c=rnd(2,9);
+    return {art:'einmaleins', frage:`Wie viel ist ${a} mal ${b} plus ${c}?`, loesung:pr+c,
+      weg:[`<b>1</b>  ${a} · ${b} = ${pr}`, `<b>2</b>  ${pr} + ${c} = <b>${pr+c}</b>`],
+      hinweis:'Punkt vor Strich, erst malnehmen, dann addieren.'};
+  }
+  // Zerlegung als Rechenweg beim großen Einmaleins
+  const wegGross = (a>10||b>10)
+    ? [`<b>1</b>  ${a} · ${b} = ${a} · ${Math.floor(b/10)*10} + ${a} · ${b%10}`,
+       `<b>2</b>  ${a*(Math.floor(b/10)*10)} + ${a*(b%10)} = <b>${pr}</b>`]
+    : [`<b>1</b>  ${a} · ${b}`, `<b>2</b>  Ergebnis <b>${pr}</b>`];
+  return {art:'einmaleins', frage:`Wie viel ist ${a} mal ${b}?`, loesung:pr, weg:wegGross,
+    hinweis: (a>10||b>10)
+      ? 'Beim großen Einmaleins hilft Zerlegen, etwa 14 mal 7 als 10 mal 7 plus 4 mal 7.'
+      : 'Kleines Einmaleins, am besten auswendig.'};
+}
+
 const GEN={
   dreisatz:{label:'DREISATZ', hint:'Proportional', fn:genDreisatz},
   nav:{label:'NAVIGATION', hint:'360 Grad', fn:genNav},
@@ -2125,7 +2183,8 @@ const GEN={
   wuerfel:{label:'WÜRFEL', hint:'Räumliches Denken', fn:genWuerfel},
   reaktion:{label:'REAKTION', hint:'Farbe antippen', fn:null},
   steuern:{label:'STEUERN', hint:'Punkt auf dem Ring halten', fn:null},
-  hoeren:{label:'HÖREN', hint:'Funkspruch merken', fn:null}
+  hoeren:{label:'HÖREN', hint:'Funkspruch merken', fn:null},
+  einmaleins:{label:'EINMALEINS', hint:'Klein und groß', fn:genEinmaleins}
 };
 const KEYS=Object.keys(GEN);
 const DICHTE={wenig:[1,2], normal:[2,4], viel:[4,6]};
@@ -2313,8 +2372,10 @@ function startSession(){
   slot.innerHTML='<span class="lbl">SPEICHER</span>'+boxen.map(b=>`<span class="box">${b}</span>`).join('');
   menuBtn.classList.remove('hidden');
   const steps=[];
-  if(CFG.merk.buchstabe) steps.push(cb=>showLetter('AKTIVER BUCHSTABE',S.letter,'Buchstabe merken. Gültig bis zur nächsten Ansage.',4,cb));
+  if(CFG.merk.buchstabe) steps.push(cb=>{ ansagen('Aktive Kennung: '+natoWort(S.letter)+'.');
+    showLetter('AKTIVER BUCHSTABE',S.letter,'Buchstabe merken. Gültig bis zur nächsten Ansage.',4,cb); });
   if(farbeAktiv()) steps.push(cb=>{ S.farbe=pick(FARBEN); starteNeben(); S.ftrace=[`<b>1</b>  Ausgangsfarbe <b>${S.farbe.n}</b>`];
+    ansagen('Aktive Farbe: '+sprechWort(S.farbe.n)+'.');
     showFarbe('AKTIVE FARBE',S.farbe,'Farbe merken. Nur Kreise in dieser Farbe werden angetippt.',4,cb); });
   if(CFG.merk.instrument) steps.push(cb=>{ S.werte=randWerte(); S.wtrace=[`<b>1</b>  Ausgangsanzeige`];
     zeigeAnzeige('ANZEIGE MERKEN',cb); });
@@ -2415,6 +2476,7 @@ function renderEvent(next){
   let neu=pick(AZ); while(neu===S.letter) neu=pick(AZ);
   S.letter=neu;
   S.trace=[`<b>1</b>  Neue Ansage: <b>${neu}</b>`];
+  ansagen('Neue Kennung: '+natoWort(neu)+'. Die vorherige verfällt.');
   showLetter('NEUER AKTIVER BUCHSTABE',neu,'Neuer Buchstabe gültig. Der vorherige verfällt.',4,next);
 }
 
@@ -2450,50 +2512,18 @@ function renderHoeren(){
         phase='eingabe'; zeige(); });
       setTimeout(play,350);
     } else {
+      // Die Werte werden nur gemerkt. Abgefragt wird später am Blockende,
+      // zusammen mit Kennung, Farbe und Instrumentenwerten.
+      S.hoerMerk = { felder:q.felder, wahl:q.wahl, text:q.text, wiederholt };
       view.innerHTML=`
         <div class="card">
           <div class="tag"><span class="art">FUNKSPRUCH</span><span class="tclock">BLOCK ${S.block+1}/${CFG.bloecke}</span></div>
-          <h2>Was wurde durchgegeben?</h2>
-          ${q.felder.map(f=>`<div class="frow"><label>${f.label}</label>
-            <input id="h_${f.k}" type="text" inputmode="numeric" autocomplete="off" placeholder="?">
-            <span>${f.einheit||''}</span></div>${f.hinweis?`<p class="sub" style="font-size:11px;margin:-4px 0 6px">${f.hinweis}</p>`:''}`).join('')}
-          ${q.wahl?`<p class="sub" style="margin-top:6px">${q.wahl.label}</p>
-            <div class="row" id="hwahl">${q.wahl.optionen.map(o=>`<button class="chip" data-v="${o}">${o}</button>`).join('')}</div>`:''}
-          <button class="btn" id="hok">BESTÄTIGEN</button>
+          <h2>Werte merken.</h2>
+          <p class="sub">${q.felder.map(f=>f.label).join(', ')}${q.wahl?', '+q.wahl.label:''} werden später abgefragt.</p>
+          ${wiederholt?`<p class="sub" style="margin-top:8px">${wiederholt} mal wiederholt angehört.</p>`:''}
+          <button class="btn" id="weiter">GEMERKT, WEITER</button>
         </div>`;
-      let gewaehlt=null;
-      const wz=document.getElementById('hwahl');
-      if(wz) wz.addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(!b) return;
-        gewaehlt=b.dataset.v; wz.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===b)); });
-      document.getElementById('hok').addEventListener('click',()=>{
-        let ok=0, n=0;
-        const zeilen=q.felder.map(f=>{
-          const el=document.getElementById('h_'+f.k);
-          const roh=(el.value||'').replace(/[.,\s]/g,'');
-          const soll=String(f.soll).replace(/[.,\s]/g,'');
-          const r=roh===soll; n++; if(r) ok++;
-          el.disabled=true; el.classList.add(r?'gut':'schlecht');
-          return `<li><b>${f.label}</b>  ${f.soll} ${f.einheit||''}${r?', richtig':', gehört '+(roh||'nichts')}</li>`;
-        });
-        if(q.wahl){ n++; const r=gewaehlt===q.wahl.soll; if(r) ok++;
-          zeilen.push(`<li><b>${q.wahl.label}</b>  ${q.wahl.soll}${r?', richtig':', gewählt '+(gewaehlt||'nichts')}</li>`); }
-        S.cat.hoeren.n+=n; S.cat.hoeren.ok+=ok;
-        S.rt.push(4000);
-        const alles=ok===n;
-        view.insertAdjacentHTML('beforeend',
-          `<div class="fb ${alles?'ok':'no'}">
-             <div class="tt">${alles?'ALLES RICHTIG':'ABWEICHUNGEN'}</div>
-             <ul class="weg">${zeilen.join('')}</ul>
-             ${wiederholt?`<p class="sub" style="margin-top:6px">${wiederholt} mal wiederholt angehört.</p>`:''}
-           </div>`);
-        document.getElementById('hok').remove();
-        const b=document.createElement('button');
-        b.className='btn'; b.id='weiter'; b.textContent='WEITER';
-        view.appendChild(b);
-        sprichStop();
-        warteAufWeiter(nextInBlock);
-      });
-      setTimeout(()=>{const e=document.getElementById('h_'+q.felder[0].k); if(e) e.focus();},60);
+      warteAufWeiter(nextInBlock);
     }
   };
   zeige();
@@ -2600,13 +2630,62 @@ function renderRecall(){
   if(CFG.merk.buchstabe) arten.push(recallBuchstabe);
   if(CFG.merk.farbe) arten.push(recallFarbe);
   if(CFG.merk.instrument) arten.push(recallWerte);
-  const liste = (arten.length>1 && (CFG.stufe==='schwer'||Math.random()<.4)) ? arten : [pick(arten)];
+  if(S.hoerMerk) arten.push(recallHoeren);
+  // Ein gehörter Funkspruch wird immer abgefragt, sonst ginge er verloren
+  let liste = (arten.length>1 && (CFG.stufe==='schwer'||Math.random()<.4)) ? arten : [pick(arten)];
+  if(S.hoerMerk && liste.indexOf(recallHoeren)<0) liste=liste.concat([recallHoeren]);
   runSteps(liste.map(f=>cb=>f(cb)), afterRecall);
 }
 function afterRecall(){
   if(S.block>=CFG.bloecke) return renderResults();
   if(Math.random()<(CFG.stufe==='leicht'?.45:.6)) renderEvent(startBlock);
   else startBlock();
+}
+function recallHoeren(next){
+  clearTimers(); keyMode='eingabe'; slot.classList.add('hidden'); beep(760,120);
+  const H=S.hoerMerk;
+  view.innerHTML=`
+    <div class="card">
+      <div class="eyebrow">ABFRAGE</div>
+      <h2>Was wurde im Funkspruch durchgegeben?</h2>
+      ${H.felder.map(f=>`<div class="frow"><label>${f.label}</label>
+        <input id="h_${f.k}" type="text" inputmode="numeric" autocomplete="off" placeholder="?">
+        <span>${f.einheit||''}</span></div>${f.hinweis?`<p class="sub" style="font-size:11px;margin:-4px 0 6px">${f.hinweis}</p>`:''}`).join('')}
+      ${H.wahl?`<p class="sub" style="margin-top:6px">${H.wahl.label}</p>
+        <div class="row" id="hwahl">${H.wahl.optionen.map(o=>`<button class="chip" data-v="${o}">${o}</button>`).join('')}</div>`:''}
+      <button class="btn" id="hok">BESTÄTIGEN</button>
+    </div>`;
+  let gewaehlt=null;
+  const wz=document.getElementById('hwahl');
+  if(wz) wz.addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(!b) return;
+    gewaehlt=b.dataset.v; wz.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===b)); });
+  document.getElementById('hok').addEventListener('click',()=>{
+    let ok=0, n=0;
+    const zeilen=H.felder.map(f=>{
+      const el=document.getElementById('h_'+f.k);
+      const roh=(el.value||'').replace(/[.,\s]/g,'');
+      const soll=String(f.soll).replace(/[.,\s]/g,'');
+      const r=roh===soll; n++; if(r) ok++;
+      el.disabled=true; el.classList.add(r?'gut':'schlecht');
+      return `<li><b>${f.label}</b>  ${f.soll} ${f.einheit||''}${r?', richtig':', genannt '+(roh||'nichts')}</li>`;
+    });
+    if(H.wahl){ n++; const r=gewaehlt===H.wahl.soll; if(r) ok++;
+      zeilen.push(`<li><b>${H.wahl.label}</b>  ${H.wahl.soll}${r?', richtig':', gewählt '+(gewaehlt||'nichts')}</li>`); }
+    S.cat.hoeren.n+=n; S.cat.hoeren.ok+=ok;
+    const alles=ok===n;
+    view.insertAdjacentHTML('beforeend',
+      `<div class="fb ${alles?'ok':'no'}">
+         <div class="tt">${alles?'ALLES RICHTIG':'ABWEICHUNGEN'}</div>
+         <ul class="weg">${zeilen.join('')}</ul>
+       </div>`);
+    document.getElementById('hok').remove();
+    const b=document.createElement('button');
+    b.className='btn'; b.id='weiter'; b.textContent='WEITER';
+    view.appendChild(b);
+    S.hoerMerk=null;
+    warteAufWeiter(next);
+  });
+  setTimeout(()=>{ if(!S) return; const e=document.getElementById('h_'+H.felder[0].k); if(e) e.focus();},60);
 }
 function recallBuchstabe(next){
   clearTimers(); keyMode='recall'; slot.classList.add('hidden'); beep(760,120);
