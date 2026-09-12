@@ -269,7 +269,7 @@ const pad3=n=>String(n).padStart(3,'0');
 const norm=h=>{h=((h%360)+360)%360;return h===0?360:h;};
 let uid=0;
 
-let CFG={bloecke:8, dichte:'normal', zeit:30, stufe:'mittel', ton:true,
+let CFG={bloecke:8, dichte:'normal', zeit:45, stufe:'mittel', ton:true,
          typen:{dreisatz:true, nav:true, flug:true, instr:true, reihe:false, englisch:true, wuerfel:true, reaktion:true, steuern:false, hoeren:false, einmaleins:false}, sprechtempo:0.92, stimmquelle:'geraet', onlineStimme:'de-DE-Wavenet-F',
          merk:{buchstabe:true, instrument:true, farbe:true}, ablese:true, doppel:false};
 let S=null, tickId=null, keyMode=null, contFn=null, toIds=[];
@@ -2090,7 +2090,39 @@ function zifferWeise(n){ return String(n).split('').join(' '); }
 function natoWort(b){ const w=NATO[b]||b; return w.charAt(0)+w.slice(1).toLowerCase(); }
 /* Grossbuchstaben werden von Sprachausgaben oft einzeln buchstabiert */
 function sprechWort(x){ return String(x).charAt(0)+String(x).slice(1).toLowerCase(); }
-function ansagen(text){ if(CFG.typen.hoeren) sprich(text); }
+/* Selten, mitten im Block, eine kurze gesprochene Zwischenfrage nach der
+   aktuellen Kennung oder Farbe. Kein Bildschirmtext, nur die Stimme, danach
+   sofort zurueck zu den Aufgaben. Deutlich seltener als jede Anzeige. */
+function hoerZwischenfrageMoeglich(){
+  return CFG.typen.hoeren && S && (S.letter || (S.farbe && CFG.merk.farbe));
+}
+function hoerZwischenfrage(next){
+  if(!hoerZwischenfrageMoeglich() || Math.random()>0.12){ next(); return; }
+  const nachFarbe = S.farbe && CFG.merk.farbe && (!S.letter || Math.random()<0.5);
+  const frage = nachFarbe ? 'Welche Farbe gilt gerade?' : 'Welcher Buchstabe gilt gerade?';
+  const soll = nachFarbe ? S.farbe.n : S.letter;
+  sprich(frage, ()=>{
+    clearTimers(); keyMode='recall'; slot.classList.add('hidden');
+    view.innerHTML = nachFarbe
+      ? `<div class="card"><div class="eyebrow">ZWISCHENFRAGE, GEHÖRT</div><h2>${frage}</h2>
+           <div class="row">${FARBEN.map(f=>`<button class="chip" data-v="${f.k}" style="border-color:${f.c}">${f.n}</button>`).join('')}</div></div>`
+      : `<div class="card"><div class="eyebrow">ZWISCHENFRAGE, GEHÖRT</div><h2>${frage}</h2>
+           <div class="row">${shuffle(AZ.split('').filter(b=>b!==soll)).slice(0,3).concat([soll]).sort(()=>Math.random()-.5)
+             .map(b=>`<button class="chip" data-v="${b}">${b}</button>`).join('')}</div></div>`;
+    view.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{
+      const r = nachFarbe ? b.dataset.v===S.farbe.k : b.dataset.v===soll;
+      const c=S.cat.hoeren; c.n++; if(r) c.ok++;
+      beep(r?1050:240, r?90:180);
+      view.insertAdjacentHTML('beforeend',
+        `<div class="fb ${r?'ok':'no'}"><div class="tt">${r?'RICHTIG':'FALSCH'}</div>
+           <div class="sol">Es war ${nachFarbe?S.farbe.n:soll}.</div></div>`);
+      view.querySelectorAll('.chip').forEach(x=>x.disabled=true);
+      const btn=document.createElement('button'); btn.className='btn'; btn.id='weiter'; btn.textContent='WEITER';
+      view.appendChild(btn);
+      warteAufWeiter(next);
+    }));
+  });
+}
 const HOER_ARTEN=[
   ()=>{ const f=(rnd(1180,1369)/10).toFixed(1), k=rnd(0,35)*10;
     return { text:`Frequenz ${zifferWeise(f.replace('.',''))} Komma. Neuer Kurs ${zifferWeise(pad3(k))}.`,
@@ -2372,10 +2404,8 @@ function startSession(){
   slot.innerHTML='<span class="lbl">SPEICHER</span>'+boxen.map(b=>`<span class="box">${b}</span>`).join('');
   menuBtn.classList.remove('hidden');
   const steps=[];
-  if(CFG.merk.buchstabe) steps.push(cb=>{ ansagen('Aktive Kennung: '+natoWort(S.letter)+'.');
-    showLetter('AKTIVER BUCHSTABE',S.letter,'Buchstabe merken. Gültig bis zur nächsten Ansage.',4,cb); });
+  if(CFG.merk.buchstabe) steps.push(cb=>{ showLetter('AKTIVER BUCHSTABE',S.letter,'Buchstabe merken. Gültig bis zur nächsten Ansage.',4,cb); });
   if(farbeAktiv()) steps.push(cb=>{ S.farbe=pick(FARBEN); starteNeben(); S.ftrace=[`<b>1</b>  Ausgangsfarbe <b>${S.farbe.n}</b>`];
-    ansagen('Aktive Farbe: '+sprechWort(S.farbe.n)+'.');
     showFarbe('AKTIVE FARBE',S.farbe,'Farbe merken. Nur Kreise in dieser Farbe werden angetippt.',4,cb); });
   if(CFG.merk.instrument) steps.push(cb=>{ S.werte=randWerte(); S.wtrace=[`<b>1</b>  Ausgangsanzeige`];
     zeigeAnzeige('ANZEIGE MERKEN',cb); });
@@ -2392,8 +2422,11 @@ function nextInBlock(){
   if(!S) return;
   if(S.tasksLeft<=0) return renderRecall();
   S.tasksLeft--;
-  if(CFG.stufe==='schwer'&&CFG.dichte!=='wenig'&&Math.random()<.2) return renderEvent(renderTask);
-  renderTask();
+  const weiter=()=>{
+    if(CFG.stufe==='schwer'&&CFG.dichte!=='wenig'&&Math.random()<.2) return renderEvent(renderTask);
+    renderTask();
+  };
+  hoerZwischenfrage(weiter);
 }
 function warteAufWeiter(next){
   keyMode='weiter';
@@ -2486,7 +2519,6 @@ function renderEvent(next){
   let neu=pick(AZ); while(neu===S.letter) neu=pick(AZ);
   S.letter=neu;
   S.trace=[`<b>1</b>  Neue Ansage: <b>${neu}</b>`];
-  ansagen('Neue Kennung: '+natoWort(neu)+'. Die vorherige verfällt.');
   showLetter('NEUER AKTIVER BUCHSTABE',neu,'Neuer Buchstabe gültig. Der vorherige verfällt.',4,next);
 }
 
