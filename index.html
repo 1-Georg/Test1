@@ -2399,8 +2399,18 @@ function warteAufWeiter(next){
   keyMode='weiter';
   contFn=()=>{contFn=null;keyMode=null;next();};
   const b=document.getElementById('weiter');
-  if(b){ b.addEventListener('click',()=>{if(contFn)contFn();});
-         b.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+  if(!b) return;
+  const ausloesen=e=>{
+    if(e&&e.cancelable) e.preventDefault();
+    if(contFn) contFn();
+  };
+  // Auf Fingertipp reagieren, nicht erst auf den vollständigen Klick. Beim
+  // Klick kann der Tipp verlorengehen, wenn die Seite noch scrollt.
+  b.addEventListener('pointerdown',ausloesen);
+  b.addEventListener('click',ausloesen);
+  b.addEventListener('touchstart',ausloesen,{passive:false});
+  // Ohne weiches Scrollen, damit der Knopf sofort stillsteht
+  try{ b.scrollIntoView({block:'nearest'}); }catch(e){ b.scrollIntoView(); }
 }
 
 function showLetter(eyebrow,letter,hold,secs,next,danger){
