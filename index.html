@@ -2123,6 +2123,17 @@ function hoerZwischenfrage(next){
     }));
   });
 }
+const HOER_PERSONEN=[
+  {akk:'den Arzt',pron:'ihn'}, {akk:'die Sanitäterin',pron:'sie'},
+  {akk:'den Verletzten',pron:'ihn'}, {akk:'den Techniker',pron:'ihn'},
+  {akk:'den Beobachter',pron:'ihn'}
+];
+const HOER_VORFAELLE=[
+  'ein verunglückter Bus','ein havariertes Boot','eine vermisste Wanderin',
+  'ein Waldbrand','ein Verkehrsunfall','eine beschädigte Brücke',
+  'ein umgestürzter Baum auf der Straße','ein medizinischer Notfall',
+  'ein blockierter Bahnübergang','ein ausgelaufener Tank'
+];
 const HOER_ARTEN=[
   ()=>{ const f=(rnd(1180,1369)/10).toFixed(1), k=rnd(0,35)*10;
     return { text:`Frequenz ${zifferWeise(f.replace('.',''))} Komma. Neuer Kurs ${zifferWeise(pad3(k))}.`,
@@ -2151,14 +2162,50 @@ const HOER_ARTEN=[
       wahl:{label:'ZIELPUNKT', optionen:shuffle(felder).slice(0,4).concat(p2).filter((x,i,a)=>a.indexOf(x)===i).slice(0,5), soll:p2} }; },
   ()=>{ const a=rnd(2,9), b=rnd(2,9), c=rnd(2,9), d=rnd(2,9);
     return { text:`Merken Sie die Zahlenfolge. ${a}. ${b}. ${c}. ${d}.`,
-      felder:[{k:'folge',label:'ZAHLENFOLGE',einheit:'',soll:`${a}${b}${c}${d}`,hinweis:'ohne Leerzeichen'}] }; }
+      felder:[{k:'folge',label:'ZAHLENFOLGE',einheit:'',soll:`${a}${b}${c}${d}`,hinweis:'ohne Leerzeichen'}] }; },
+  /* Auftrag mit Vorfallsort. Der Vorfall selbst wird als Mehrfachauswahl
+     abgefragt, damit nicht nur Zahlen, sondern auch der Inhalt hängen bleibt. */
+  ()=>{ const p1=rnd(1,30); let p2=rnd(1,30); while(p2===p1) p2=rnd(1,30);
+    const pers=pick(HOER_PERSONEN), inz=pick(HOER_VORFAELLE);
+    const ablenker=shuffle(HOER_VORFAELLE.filter(x=>x!==inz)).slice(0,3);
+    return { text:`Auftrag. Nehmen Sie ${pers.akk} am Punkt ${p1} auf. Dort befindet sich ${inz}. Bringen Sie ${pers.pron} zum Punkt ${p2}.`,
+      felder:[{k:'p1',label:'AUFNAHMEPUNKT',einheit:'',soll:String(p1)},
+              {k:'p2',label:'ZIELPUNKT',einheit:'',soll:String(p2)}],
+      wahl:{label:'WAS BEFAND SICH AM AUFNAHMEPUNKT?', optionen:shuffle(ablenker.concat([inz])), soll:inz} }; },
+  /* Ein Wert wird zunächst genannt und dann per Korrektur geändert. Gefragt
+     wird nur der zuletzt genannte, gültige Wert. */
+  ()=>{ const k=rnd(0,35)*10, w1=rnd(0,35)*10; let w2=rnd(0,35)*10; while(w2===w1) w2=rnd(0,35)*10;
+    return { text:`Kurs ${zifferWeise(pad3(k))}. Windrichtung ${zifferWeise(pad3(w1))} Grad. Korrektur, die Windrichtung ändert sich auf ${zifferWeise(pad3(w2))} Grad.`,
+      felder:[{k:'hdg',label:'KURS',einheit:'Grad',soll:String(k)},
+              {k:'wind',label:'WINDRICHTUNG, ZULETZT GENANNT',einheit:'Grad',soll:String(w2),hinweis:'nur der geänderte Wert zählt'}] }; }
 ];
 function genHoeren(){
   const roh=pick(HOER_ARTEN)();
   // Auf leicht weniger Werte, auf schwer alle
   let felder=roh.felder;
   if(CFG.stufe==='leicht' && felder.length>2) felder=felder.slice(0,2);
-  return { art:'hoeren', hoeren:true, text:roh.text, felder:felder, wahl:roh.wahl||null,
+  let text=roh.text;
+  // Gelegentlich ändert der Funkspruch selbst auch die aktive Kennung oder
+  // Farbe. Das speist direkt die bestehende Abfrage am Blockende, es
+  // entsteht also keine zusätzliche, getrennte Frage dafür.
+  if(S && Math.random()<0.3){
+    const kannBuchstabe = CFG.merk.buchstabe && S.letter;
+    const kannFarbe = farbeAktiv() && S.farbe;
+    if(kannBuchstabe && (!kannFarbe || Math.random()<0.5)){
+      let neu=pick(AZ); while(neu===S.letter) neu=pick(AZ);
+      text += ` Neuer aktiver Buchstabe ist ${natoWort(neu)}.`;
+      S.letter=neu;
+      if(!S.trace) S.trace=[];
+      S.trace.push(`<b>${S.trace.length+1}</b>  Per Funkspruch geändert auf <b>${neu}</b>`);
+    } else if(kannFarbe){
+      const neu=pick(FARBEN.filter(f=>f.k!==S.farbe.k));
+      text += ` Neue aktive Farbe ist ${sprechWort(neu.n)}.`;
+      S.farbe=neu;
+      if(!S.ftrace) S.ftrace=[];
+      S.ftrace.push(`<b>${S.ftrace.length+1}</b>  Per Funkspruch geändert auf <b>${neu.n}</b>`);
+    }
+  }
+  return { art:'hoeren', hoeren:true, text:text, felder:felder, wahl:roh.wahl||null,
     hinweis:'Der Funkspruch wird einmal vorgelesen. Wiederholen ist möglich, wird aber vermerkt.' };
 }
 
