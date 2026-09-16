@@ -2107,7 +2107,7 @@ function hoerZwischenfrage(next){
       ? `<div class="card"><div class="eyebrow">ZWISCHENFRAGE, GEHÖRT</div><h2>${frage}</h2>
            <div class="row">${FARBEN.map(f=>`<button class="chip" data-v="${f.k}" style="border-color:${f.c}">${f.n}</button>`).join('')}</div></div>`
       : `<div class="card"><div class="eyebrow">ZWISCHENFRAGE, GEHÖRT</div><h2>${frage}</h2>
-           <div class="row">${shuffle(AZ.split('').filter(b=>b!==soll)).slice(0,3).concat([soll]).sort(()=>Math.random()-.5)
+           <div class="row">${shuffle(AZ.filter(b=>b!==soll)).slice(0,3).concat([soll]).sort(()=>Math.random()-.5)
              .map(b=>`<button class="chip" data-v="${b}">${b}</button>`).join('')}</div></div>`;
     view.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{
       const r = nachFarbe ? b.dataset.v===S.farbe.k : b.dataset.v===soll;
