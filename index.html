@@ -270,7 +270,7 @@ const norm=h=>{h=((h%360)+360)%360;return h===0?360:h;};
 let uid=0;
 
 let CFG={bloecke:8, dichte:'normal', zeit:45, stufe:'mittel', ton:true,
-         typen:{dreisatz:true, nav:true, flug:true, instr:true, reihe:false, englisch:true, wuerfel:true, reaktion:true, steuern:false, hoeren:false, einmaleins:false}, sprechtempo:0.92, stimmquelle:'geraet', onlineStimme:'de-DE-Wavenet-F',
+         typen:{dreisatz:true, nav:true, flug:true, instr:true, reihe:true, englisch:true, wuerfel:true, reaktion:true, steuern:false, hoeren:false, einmaleins:true}, sprechtempo:0.92, stimmquelle:'geraet', onlineStimme:'de-DE-Wavenet-F',
          merk:{buchstabe:true, instrument:true, farbe:true}, ablese:true, doppel:false};
 let S=null, tickId=null, keyMode=null, contFn=null, toIds=[];
 function later(fn,ms){ const id=setTimeout(fn,ms); toIds.push(id); return id; }
@@ -539,7 +539,7 @@ function gauge(inner,name){
 }
 function svgHorizon(pitch,bank,slip){
   // Nach Lernunterlage: untere Bankskala, ein Strich entspricht 10 Grad.
-  // Querstriche der Nickleiter entsprechen 5 Grad. Darunter die Libelle.
+  // Querstriche der Nickleiter entsprechen 5 Grad.
   const id='h'+(++uid), p=pitch*1.6;
   const P=(deg,r)=>[50+r*Math.cos((deg-90)*Math.PI/180), 50+r*Math.sin((deg-90)*Math.PI/180)];
   let sc='';
@@ -567,7 +567,6 @@ function svgHorizon(pitch,bank,slip){
     const w=(Math.abs(x)%10===0)?9:4.5;
     pl+=`<line x1="${50-w}" y1="${50-x*1.6}" x2="${50+w}" y2="${50-x*1.6}" stroke="#e6eef7" stroke-width=".9"/>`;
   }));
-  const sl=Math.max(-1,Math.min(1,(slip===undefined?0:slip)));
   return gauge(`
     <defs><clipPath id="${id}"><circle cx="50" cy="50" r="34"/></clipPath></defs>
     <g clip-path="url(#${id})">
@@ -586,10 +585,7 @@ function svgHorizon(pitch,bank,slip){
     <path d="M27 50 h13 M60 50 h13" stroke="#ffb020" stroke-width="2.6" fill="none"/>
     <path d="M44 50 h3 M53 50 h3" stroke="#ffb020" stroke-width="2.6" fill="none"/>
     <circle cx="50" cy="50" r="1.6" fill="#ffb020"/>
-    <rect x="34" y="86" width="32" height="8" rx="4" fill="#0b1119" stroke="#8fa4b8" stroke-width=".8"/>
-    <line x1="46" y1="86.6" x2="46" y2="93.4" stroke="#8fa4b8" stroke-width=".8"/>
-    <line x1="54" y1="86.6" x2="54" y2="93.4" stroke="#8fa4b8" stroke-width=".8"/>
-    <circle cx="${50+sl*12}" cy="90" r="2.9" fill="#141a22" stroke="#8fa4b8" stroke-width=".5"/>`,'HORIZONT');
+    `,'HORIZONT');
 }
 function svgAlt(alt, qnh){
   // Nach Lernunterlage: kleiner Zeiger zeigt Tausend Fuß, großer Zeiger Hundert Fuß.
@@ -1899,7 +1895,10 @@ function ableseZeit(){ return merkZeit() + (S&&S.felder?S.felder.length:3)*6; }
 function randWerte(){
   const w={};
   w.alt = CFG.stufe==='leicht'?rnd(2,19)*500 : CFG.stufe==='mittel'?rnd(2,39)*100 : Math.min(9900, rnd(2,39)*100+rnd(0,5)*1000);
-  w.ias = CFG.stufe==='leicht'?rnd(2,9)*20 : rnd(6,19)*10;
+  // Werte nahe 0 oder nahe dem oberen Rand landen auf dem Fahrtmesser in
+  // der schmalen Luecke des Zifferblatts und sind dort kaum von einem sehr
+  // niedrigen Wert zu unterscheiden. Deshalb bleibt ein Sicherheitsabstand.
+  w.ias = CFG.stufe==='leicht'?rnd(2,8)*20 : rnd(3,17)*10;
   w.hdg = CFG.stufe==='leicht'?rnd(1,12)*30 : rnd(1,36)*10;
   w.vsi = CFG.stufe==='leicht'?pick([-1000,-500,0,500,1000]) : pick([-2000,-1500,-1000,-500,0,500,1000,1500,2000]);
   w.tq = Math.round((CFG.stufe==='leicht'?pick([1,1.5,2,2.5,3]):rnd(4,34)/10)*10)/10;
@@ -1950,6 +1949,7 @@ function showWerteKontrolle(eyebrow,w,next){
       el.disabled=true;
       return `<b>${FELD[f].label}</b>  ${f==='hdg'?pad3(soll):(f==='frq'?soll.toFixed(3):f==='tq'?soll.toFixed(1):(f==='vsi'&&soll>0?'+'+soll:soll))} ${FELD[f].einheit}${ok?', korrekt':', abgelesen '+(raw===''?'keine':raw)}`;
     });
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
     document.getElementById('ok').disabled=true;
     beep(alle?1050:240, alle?90:180);
     document.getElementById('fbHost').innerHTML=`
@@ -2653,6 +2653,11 @@ function renderTask(){
 
   const tAuf=Date.now();
   const finish=val=>{
+    // Die Bildschirmtastatur schliesst sich erst danach. Faellt der Tipp auf
+    // WEITER in diese Verschiebung, geht er auf iOS leicht verloren. Deshalb
+    // wird der Fokus sofort entfernt, damit das Schliessen laengst
+    // abgeschlossen ist, wenn WEITER erscheint.
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
     clearTimers();
     const ok=val!==null&&check(q,val);
     const c=S.cat[q.art]; c.n++;
@@ -2850,6 +2855,7 @@ function recallWerte(next){
     });
     if(alle){S.streak++;S.best=Math.max(S.best,S.streak);beep(1150,140);}
     else {S.streak=0;beep(200,260);buzz(120);}
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
     S.felder.forEach(f=>document.getElementById('i_'+f).disabled=true);
     document.getElementById('ok').disabled=true;
     document.getElementById('fbHost').innerHTML=`
