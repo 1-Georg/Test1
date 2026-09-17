@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Memory Ops">
+<meta name="apple-mobile-web-app-title" content="Piloten Trainer">
 <meta name="theme-color" content="#0a0e14">
-<title>Memory Ops</title>
+<title>Piloten Trainer</title>
 <style>
 :root{
   --sans:-apple-system,BlinkMacSystemFont,'Segoe UI Variable Text','Segoe UI',Roboto,'Helvetica Neue',sans-serif;
@@ -234,7 +234,7 @@ h2{font-size:19px;font-weight:600;letter-spacing:.5px;margin-bottom:4px}
 <body>
 
 <div class="topbar">
-  <div class="brand"><b>MEMORY</b> OPS</div>
+  <div class="brand"><b>PILOTEN</b> TRAINER</div>
   <div class="spacer"></div>
   <button class="iconbtn hidden" id="menuBtn">MENÜ</button>
 </div>
@@ -253,6 +253,24 @@ h2{font-size:19px;font-weight:600;letter-spacing:.5px;margin-bottom:4px}
 
 <script>
 "use strict";
+
+(function(){
+  let gezeigt=false;
+  const zeigeFehler=()=>{
+    if(gezeigt) return; gezeigt=true;
+    const d=document.createElement('div');
+    d.style.cssText='position:fixed;inset:0;z-index:999;background:rgba(10,14,20,.96);'
+      +'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+      +'gap:16px;padding:24px;text-align:center;font-family:sans-serif';
+    d.innerHTML='<div style="color:#ff5c5c;font-weight:700;font-size:18px;letter-spacing:1px">FEHLER AUFGETRETEN</div>'
+      +'<div style="color:#dbe3ec;font-size:15px;max-width:320px">Etwas ist schiefgelaufen. Ein Neuladen behebt das meist.</div>'
+      +'<button style="background:#ffb020;color:#0a0e14;font-weight:700;border:none;border-radius:10px;'
+      +'padding:14px 28px;font-size:15px;cursor:pointer" onclick="location.reload()">NEU LADEN</button>';
+    document.body.appendChild(d);
+  };
+  window.addEventListener('error',zeigeFehler);
+  window.addEventListener('unhandledrejection',zeigeFehler);
+})();
 
 const view=document.getElementById('view'), slot={classList:{add(){},remove(){}}},
       menuBtn=document.getElementById('menuBtn'), prog=document.getElementById('prog'),
@@ -2221,23 +2239,23 @@ function genEinmaleins(){
   const art=pick(['mal','geteilt','luecke','quadrat','kette']);
   if(art==='quadrat'){
     const z=rnd(gross?11:2, obere);
-    return {art:'einmaleins', frage:`Wie viel ist ${z} mal ${z}?`, loesung:z*z,
+    return {art:'einmaleins', typ:'zahl', frage:`Wie viel ist ${z} mal ${z}?`, loesung:z*z,
       weg:[`<b>1</b>  ${z} · ${z}`, `<b>2</b>  Ergebnis <b>${z*z}</b>`],
       hinweis:'Quadratzahlen lohnt es sich auswendig zu können.'};
   }
   if(art==='geteilt'){
-    return {art:'einmaleins', frage:`Wie viel ist ${pr} geteilt durch ${a}?`, loesung:b,
+    return {art:'einmaleins', typ:'zahl', frage:`Wie viel ist ${pr} geteilt durch ${a}?`, loesung:b,
       weg:[`<b>1</b>  ${a} · ? = ${pr}`, `<b>2</b>  ${pr} : ${a} = <b>${b}</b>`],
       hinweis:'Rückwärts denken: welche Zahl mal dem Teiler ergibt die Zahl?'};
   }
   if(art==='luecke'){
-    return {art:'einmaleins', frage:`${a} mal welche Zahl ergibt ${pr}?`, loesung:b,
+    return {art:'einmaleins', typ:'zahl', frage:`${a} mal welche Zahl ergibt ${pr}?`, loesung:b,
       weg:[`<b>1</b>  ${a} · ? = ${pr}`, `<b>2</b>  ? = ${pr} : ${a} = <b>${b}</b>`],
       hinweis:'Die Lücke findest du über die Umkehrung, also durch Teilen.'};
   }
   if(art==='kette'){
     const c=rnd(2,9);
-    return {art:'einmaleins', frage:`Wie viel ist ${a} mal ${b} plus ${c}?`, loesung:pr+c,
+    return {art:'einmaleins', typ:'zahl', frage:`Wie viel ist ${a} mal ${b} plus ${c}?`, loesung:pr+c,
       weg:[`<b>1</b>  ${a} · ${b} = ${pr}`, `<b>2</b>  ${pr} + ${c} = <b>${pr+c}</b>`],
       hinweis:'Punkt vor Strich, erst malnehmen, dann addieren.'};
   }
@@ -2246,7 +2264,7 @@ function genEinmaleins(){
     ? [`<b>1</b>  ${a} · ${b} = ${a} · ${Math.floor(b/10)*10} + ${a} · ${b%10}`,
        `<b>2</b>  ${a*(Math.floor(b/10)*10)} + ${a*(b%10)} = <b>${pr}</b>`]
     : [`<b>1</b>  ${a} · ${b}`, `<b>2</b>  Ergebnis <b>${pr}</b>`];
-  return {art:'einmaleins', frage:`Wie viel ist ${a} mal ${b}?`, loesung:pr, weg:wegGross,
+  return {art:'einmaleins', typ:'zahl', frage:`Wie viel ist ${a} mal ${b}?`, loesung:pr, weg:wegGross,
     hinweis: (a>10||b>10)
       ? 'Beim großen Einmaleins hilft Zerlegen, etwa 14 mal 7 als 10 mal 7 plus 4 mal 7.'
       : 'Kleines Einmaleins, am besten auswendig.'};
@@ -2279,16 +2297,13 @@ function konfText(){
   if(CFG.merk.instrument) merk.push('Anzeige');
   const arten=KEYS.filter(k=>CFG.typen[k]).length;
   const zeit=CFG.zeit?CFG.zeit+' s je Aufgabe':'ohne Zeitvorgabe';
-  return `<b>${CFG.stufe.toUpperCase()}</b> · ${CFG.bloecke} Blöcke · ${zeit}<br>
-    Merken: ${merk.join(', ')} · ${arten} Aufgabenarten${CFG.doppel?' · Doppelaufgabe':''}${CFG.ablese?' · Ablesekontrolle':''}`;
+  return `<b>${CFG.stufe.toUpperCase()}</b> · ${CFG.bloecke} Blöcke · ${zeit} · ${merk.join('/')} · ${arten} Arten${CFG.doppel?' · Doppel':''}${CFG.ablese?' · Ablesen':''}`;
 }
 function renderMenu(){
   clearTimers(); nebenStop(); keyMode=null; contFn=null; S=null;
   slot.classList.add('hidden'); menuBtn.classList.add('hidden'); prog.style.width='0%';
   view.innerHTML=`
-    <div class="eyebrow">ARBEITSGEDÄCHTNIS UNTER STÖRLAST</div>
-    <h1>Memory Ops</h1>
-    <p class="sub" style="margin-top:8px">Kennung, Farbe und Instrumentenwerte merken, während Aufgaben aus dem Auswahlverfahren ablenken. In unregelmäßigen Abständen wird der Speicherinhalt abgefragt.</p>
+    <div class="eyebrow">PILOTEN TRAINER</div>
 
     <button class="card konfkarte" id="tog">
       <div class="opt">Aktuelle Einstellung <span class="tipphinweis">${optsOffen?'ZUM SCHLIESSEN TIPPEN':'ZUM ÄNDERN TIPPEN'}</span></div>
