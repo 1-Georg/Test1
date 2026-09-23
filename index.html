@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Piloten Trainer">
+<meta name="apple-mobile-web-app-title" content="Memory Ops">
 <meta name="theme-color" content="#0a0e14">
-<title>Piloten Trainer</title>
+<title>Memory Ops</title>
 <style>
 :root{
   --sans:-apple-system,BlinkMacSystemFont,'Segoe UI Variable Text','Segoe UI',Roboto,'Helvetica Neue',sans-serif;
@@ -234,7 +234,7 @@ h2{font-size:19px;font-weight:600;letter-spacing:.5px;margin-bottom:4px}
 <body>
 
 <div class="topbar">
-  <div class="brand"><b>PILOTEN</b> TRAINER</div>
+  <div class="brand"><b>MEMORY</b> OPS</div>
   <div class="spacer"></div>
   <button class="iconbtn hidden" id="menuBtn">MENÜ</button>
 </div>
@@ -253,24 +253,6 @@ h2{font-size:19px;font-weight:600;letter-spacing:.5px;margin-bottom:4px}
 
 <script>
 "use strict";
-
-(function(){
-  let gezeigt=false;
-  const zeigeFehler=()=>{
-    if(gezeigt) return; gezeigt=true;
-    const d=document.createElement('div');
-    d.style.cssText='position:fixed;inset:0;z-index:999;background:rgba(10,14,20,.96);'
-      +'display:flex;flex-direction:column;align-items:center;justify-content:center;'
-      +'gap:16px;padding:24px;text-align:center;font-family:sans-serif';
-    d.innerHTML='<div style="color:#ff5c5c;font-weight:700;font-size:18px;letter-spacing:1px">FEHLER AUFGETRETEN</div>'
-      +'<div style="color:#dbe3ec;font-size:15px;max-width:320px">Etwas ist schiefgelaufen. Ein Neuladen behebt das meist.</div>'
-      +'<button style="background:#ffb020;color:#0a0e14;font-weight:700;border:none;border-radius:10px;'
-      +'padding:14px 28px;font-size:15px;cursor:pointer" onclick="location.reload()">NEU LADEN</button>';
-    document.body.appendChild(d);
-  };
-  window.addEventListener('error',zeigeFehler);
-  window.addEventListener('unhandledrejection',zeigeFehler);
-})();
 
 const view=document.getElementById('view'), slot={classList:{add(){},remove(){}}},
       menuBtn=document.getElementById('menuBtn'), prog=document.getElementById('prog'),
@@ -1930,6 +1912,13 @@ function zeigeAnzeige(eyebrow,next){
   if(CFG.ablese) return showWerteKontrolle(eyebrow,S.werte,next);
   showWerte(eyebrow,S.werte,feldNamen()+' ablesen und merken.',merkZeit(),next);
 }
+function hinweisWerte(){
+  const teile=[];
+  if(S.felder.indexOf('vsi')>=0) teile.push('Beim Steigen genügt der Betrag, ein Vorzeichen ist nicht nötig.');
+  if(S.felder.indexOf('frq')>=0||S.felder.indexOf('tq')>=0) teile.push('Bei Leistung und Funk kann der Punkt der Tastatur benutzt werden, notfalls geht es auch ohne Komma, etwa 123600 für 123,600.');
+  return teile.length?'<br><span style="font-size:11px">'+teile.join(' ')+'</span>':'';
+}
+function inputmodeFuer(f){ return (f==='tq'||f==='frq')?'decimal':'numeric'; }
 function showWerteKontrolle(eyebrow,w,next){
   if(!S) return;
   clearTimers(); keyMode='eingabe'; slot.classList.add('hidden'); beep(960,160); buzz(30);
@@ -1938,8 +1927,8 @@ function showWerteKontrolle(eyebrow,w,next){
     <div class="card">
       <div class="eyebrow">${eyebrow}</div>
       ${wertePanel(w)}
-      <p class="hold" style="text-align:center">${feldNamen()} ablesen, eintragen und merken.${(S.felder.indexOf('vsi')>=0||S.felder.indexOf('frq')>=0||S.felder.indexOf('tq')>=0)?'<br><span style="font-size:11px">Ohne Vorzeichen und ohne Komma eingeben, etwa 123600 für 123,600.</span>':''}</p>
-      ${S.felder.map(f=>`<div class="frow"><label>${FELD[f].label}</label><input id="k_${f}" type="text" inputmode="numeric" autocomplete="off" placeholder="?"><span>${FELD[f].einheit}</span></div>`).join('')}
+      <p class="hold" style="text-align:center">${feldNamen()} ablesen, eintragen und merken.${hinweisWerte()}</p>
+      ${S.felder.map(f=>`<div class="frow"><label>${FELD[f].label}</label><input id="k_${f}" type="text" inputmode="${inputmodeFuer(f)}" autocomplete="off" placeholder="?"><span>${FELD[f].einheit}</span></div>`).join('')}
       <button class="btn" id="ok">BESTÄTIGEN</button>
       <div class="tbar" id="tb"><span id="tbf"></span></div>
     </div>
@@ -1960,7 +1949,7 @@ function showWerteKontrolle(eyebrow,w,next){
       const tol=(f==='frq'?0.0005:f==='tq'?0.005:0.001);
       const kand=[n];
       if(f==='frq' && n>=1000) kand.push(n/1000);
-      if(f==='tq'  && n>=10)   kand.push(n/10);
+      if(f==='tq') kand.push(n/10);
       const ok=!isNaN(n) && kand.some(x=>
         Math.abs(x-soll)<tol || (f==='vsi'&&Math.abs(Math.abs(x)-Math.abs(soll))<tol));
       S.ab.n++; if(ok) S.ab.ok++; else alle=false;
@@ -2239,23 +2228,23 @@ function genEinmaleins(){
   const art=pick(['mal','geteilt','luecke','quadrat','kette']);
   if(art==='quadrat'){
     const z=rnd(gross?11:2, obere);
-    return {art:'einmaleins', typ:'zahl', frage:`Wie viel ist ${z} mal ${z}?`, loesung:z*z,
+    return {art:'einmaleins', frage:`Wie viel ist ${z} mal ${z}?`, loesung:z*z,
       weg:[`<b>1</b>  ${z} · ${z}`, `<b>2</b>  Ergebnis <b>${z*z}</b>`],
       hinweis:'Quadratzahlen lohnt es sich auswendig zu können.'};
   }
   if(art==='geteilt'){
-    return {art:'einmaleins', typ:'zahl', frage:`Wie viel ist ${pr} geteilt durch ${a}?`, loesung:b,
+    return {art:'einmaleins', frage:`Wie viel ist ${pr} geteilt durch ${a}?`, loesung:b,
       weg:[`<b>1</b>  ${a} · ? = ${pr}`, `<b>2</b>  ${pr} : ${a} = <b>${b}</b>`],
       hinweis:'Rückwärts denken: welche Zahl mal dem Teiler ergibt die Zahl?'};
   }
   if(art==='luecke'){
-    return {art:'einmaleins', typ:'zahl', frage:`${a} mal welche Zahl ergibt ${pr}?`, loesung:b,
+    return {art:'einmaleins', frage:`${a} mal welche Zahl ergibt ${pr}?`, loesung:b,
       weg:[`<b>1</b>  ${a} · ? = ${pr}`, `<b>2</b>  ? = ${pr} : ${a} = <b>${b}</b>`],
       hinweis:'Die Lücke findest du über die Umkehrung, also durch Teilen.'};
   }
   if(art==='kette'){
     const c=rnd(2,9);
-    return {art:'einmaleins', typ:'zahl', frage:`Wie viel ist ${a} mal ${b} plus ${c}?`, loesung:pr+c,
+    return {art:'einmaleins', frage:`Wie viel ist ${a} mal ${b} plus ${c}?`, loesung:pr+c,
       weg:[`<b>1</b>  ${a} · ${b} = ${pr}`, `<b>2</b>  ${pr} + ${c} = <b>${pr+c}</b>`],
       hinweis:'Punkt vor Strich, erst malnehmen, dann addieren.'};
   }
@@ -2264,7 +2253,7 @@ function genEinmaleins(){
     ? [`<b>1</b>  ${a} · ${b} = ${a} · ${Math.floor(b/10)*10} + ${a} · ${b%10}`,
        `<b>2</b>  ${a*(Math.floor(b/10)*10)} + ${a*(b%10)} = <b>${pr}</b>`]
     : [`<b>1</b>  ${a} · ${b}`, `<b>2</b>  Ergebnis <b>${pr}</b>`];
-  return {art:'einmaleins', typ:'zahl', frage:`Wie viel ist ${a} mal ${b}?`, loesung:pr, weg:wegGross,
+  return {art:'einmaleins', frage:`Wie viel ist ${a} mal ${b}?`, loesung:pr, weg:wegGross,
     hinweis: (a>10||b>10)
       ? 'Beim großen Einmaleins hilft Zerlegen, etwa 14 mal 7 als 10 mal 7 plus 4 mal 7.'
       : 'Kleines Einmaleins, am besten auswendig.'};
@@ -2297,13 +2286,16 @@ function konfText(){
   if(CFG.merk.instrument) merk.push('Anzeige');
   const arten=KEYS.filter(k=>CFG.typen[k]).length;
   const zeit=CFG.zeit?CFG.zeit+' s je Aufgabe':'ohne Zeitvorgabe';
-  return `<b>${CFG.stufe.toUpperCase()}</b> · ${CFG.bloecke} Blöcke · ${zeit} · ${merk.join('/')} · ${arten} Arten${CFG.doppel?' · Doppel':''}${CFG.ablese?' · Ablesen':''}`;
+  return `<b>${CFG.stufe.toUpperCase()}</b> · ${CFG.bloecke} Blöcke · ${zeit}<br>
+    Merken: ${merk.join(', ')} · ${arten} Aufgabenarten${CFG.doppel?' · Doppelaufgabe':''}${CFG.ablese?' · Ablesekontrolle':''}`;
 }
 function renderMenu(){
   clearTimers(); nebenStop(); keyMode=null; contFn=null; S=null;
   slot.classList.add('hidden'); menuBtn.classList.add('hidden'); prog.style.width='0%';
   view.innerHTML=`
-    <div class="eyebrow">PILOTEN TRAINER</div>
+    <div class="eyebrow">ARBEITSGEDÄCHTNIS UNTER STÖRLAST</div>
+    <h1>Memory Ops</h1>
+    <p class="sub" style="margin-top:8px">Kennung, Farbe und Instrumentenwerte merken, während Aufgaben aus dem Auswahlverfahren ablenken. In unregelmäßigen Abständen wird der Speicherinhalt abgefragt.</p>
 
     <button class="card konfkarte" id="tog">
       <div class="opt">Aktuelle Einstellung <span class="tipphinweis">${optsOffen?'ZUM SCHLIESSEN TIPPEN':'ZUM ÄNDERN TIPPEN'}</span></div>
@@ -2313,6 +2305,7 @@ function renderMenu(){
     <div id="oben" class="${optsOffen?'hidden':''}">
       <button class="btn" id="go">LAUF STARTEN</button>
       <button class="btn ghost" id="hist">VERLAUF</button>
+      <button class="btn ghost" id="instr">NUR INSTRUMENTE</button>
       <button class="btn ghost" id="lernen">WÜRFEL LERNEN</button>
     </div>
 
@@ -2428,6 +2421,7 @@ function renderMenu(){
   ['go','go2'].forEach(id=>{const b=document.getElementById(id); if(b) b.addEventListener('click',startSession);});
   ['hist','hist2'].forEach(id=>{const b=document.getElementById(id); if(b) b.addEventListener('click',renderVerlauf);});
   const bl=document.getElementById('lernen'); if(bl) bl.addEventListener('click',()=>{ LK.lektion=0; renderLernen(); });
+  const bi=document.getElementById('instr'); if(bi) bi.addEventListener('click',renderInstrMenu);
   const umschalten=()=>{
     optsOffen=!optsOffen;
     renderMenu();
@@ -2758,7 +2752,7 @@ function recallHoeren(next){
       <div class="eyebrow">ABFRAGE</div>
       <h2>Was wurde im Funkspruch durchgegeben?</h2>
       ${H.felder.map(f=>`<div class="frow"><label>${f.label}</label>
-        <input id="h_${f.k}" type="text" inputmode="numeric" autocomplete="off" placeholder="?">
+        <input id="h_${f.k}" type="text" inputmode="${inputmodeFuer(f.k)}" autocomplete="off" placeholder="?">
         <span>${f.einheit||''}</span></div>${f.hinweis?`<p class="sub" style="font-size:11px;margin:-4px 0 6px">${f.hinweis}</p>`:''}`).join('')}
       ${H.wahl?`<p class="sub" style="margin-top:6px">${H.wahl.label}</p>
         <div class="row" id="hwahl">${H.wahl.optionen.map(o=>`<button class="chip" data-v="${o}">${o}</button>`).join('')}</div>`:''}
@@ -2839,8 +2833,8 @@ function recallWerte(next){
     <div class="card">
       <div class="eyebrow">ABFRAGE</div>
       <h2>Welche Werte zeigte die letzte gültige Anzeige?</h2>
-      <p class="sub">Gemerkte Werte eintragen.</p>
-      ${S.felder.map(f=>`<div class="frow"><label>${FELD[f].label}</label><input id="i_${f}" type="text" inputmode="numeric" autocomplete="off" placeholder="?"><span>${FELD[f].einheit}</span></div>`).join('')}
+      <p class="sub">Gemerkte Werte eintragen.${hinweisWerte()}</p>
+      ${S.felder.map(f=>`<div class="frow"><label>${FELD[f].label}</label><input id="i_${f}" type="text" inputmode="${inputmodeFuer(f)}" autocomplete="off" placeholder="?"><span>${FELD[f].einheit}</span></div>`).join('')}
       <button class="btn" id="ok">BESTÄTIGEN</button>
     </div>
     <div id="fbHost"></div>`;
@@ -2861,7 +2855,7 @@ function recallWerte(next){
       const tol=(f==='frq'?0.0005:f==='tq'?0.005:0.001);
       const kand=[n];
       if(f==='frq' && n>=1000) kand.push(n/1000);
-      if(f==='tq'  && n>=10)   kand.push(n/10);
+      if(f==='tq') kand.push(n/10);
       const ok=!isNaN(n) && kand.some(x=>
         Math.abs(x-soll)<tol || (f==='vsi'&&Math.abs(Math.abs(x)-Math.abs(soll))<tol));
       S.ri.n++; if(ok) S.ri.ok++; else alle=false;
@@ -3057,6 +3051,195 @@ function verlaufChart(v){
     <p class="sub" style="font-size:12px;margin-top:6px">Punkte je Lauf. Die gestrichelte Linie ist der Schnitt der letzten drei Läufe. Punktfarbe zeigt die Stufe: türkis leicht, gelb mittel, rot schwer.</p>`;
 }
 let clrBestaetigt=false;
+
+/* =========================================================
+   Instrumententraining: Anzeige merken und abfragen, wahlweise
+   mit einer kurzen Rechenaufgabe als Ablenkung dazwischen
+   ========================================================= */
+let INST={stufe:'mittel', bloecke:8, ablese:true, pause:8, rechnen:true};
+function instFelder(stufe){
+  return stufe==='leicht'?['alt','ias','hdg']
+       : stufe==='mittel'?['alt','ias','hdg','vsi']
+       : ['alt','ias','hdg','tq','frq'];
+}
+function renderInstrMenu(){
+  clearTimers(); nebenStop(); keyMode=null; contFn=null; S=null;
+  slot.classList.add('hidden'); menuBtn.classList.add('hidden'); prog.style.width='0%';
+  view.innerHTML=`
+    <div class="eyebrow">NUR INSTRUMENTE</div>
+    <h1>Instrumententraining</h1>
+    <p class="sub" style="margin-top:8px">Merk- und Abfrageübung für die Anzeigewerte, wahlweise mit einer kurzen Rechenaufgabe als Ablenkung dazwischen.</p>
+    <div class="card">
+      <div class="opt">Stufe</div>
+      <div class="row" id="iSt">
+        ${[['leicht','LEICHT'],['mittel','MITTEL'],['schwer','SCHWER']].map(([v,l])=>`<button class="chip ${INST.stufe===v?'on':''}" data-v="${v}">${l}</button>`).join('')}
+      </div>
+      <p class="sub" style="margin-top:8px;font-size:12px" id="iStInfo"></p>
+      <div class="opt" style="margin-top:16px">Blöcke pro Lauf</div>
+      <div class="row" id="iBl">${[5,8,12,16,20].map(n=>`<button class="chip ${INST.bloecke===n?'on':''}" data-v="${n}">${n}</button>`).join('')}</div>
+      <div class="opt" style="margin-top:16px">Rechenaufgabe dazwischen</div>
+      <div class="row" id="iRe">
+        <button class="chip ${INST.rechnen?'on':''}" data-v="1">AN</button>
+        <button class="chip ${INST.rechnen?'':'on'}" data-v="0">AUS</button>
+      </div>
+      <p class="sub" style="margin-top:8px;font-size:12px">Zwischen Merken und Abfrage steht eine Dreisatzaufgabe. Die Anzeigewerte müssen dabei im Kopf bleiben.</p>
+      <div class="opt" style="margin-top:16px">Verzögerung bis zur Abfrage</div>
+      <div class="row" id="iPa">${[[0,'OHNE'],[5,'5 s'],[8,'8 s'],[15,'15 s'],[25,'25 s']].map(([v,l])=>`<button class="chip ${INST.pause===v?'on':''}" data-v="${v}">${l}</button>`).join('')}</div>
+      <p class="sub" style="margin-top:8px;font-size:12px">Zusätzliche Wartezeit ohne Anzeige, nach der Rechenaufgabe falls aktiv.</p>
+      <div class="opt" style="margin-top:16px">Ablesekontrolle</div>
+      <div class="row" id="iAb">
+        <button class="chip ${INST.ablese?'on':''}" data-v="1">AN</button>
+        <button class="chip ${INST.ablese?'':'on'}" data-v="0">AUS</button>
+      </div>
+      <p class="sub" style="margin-top:8px;font-size:12px">Die abgelesenen Werte werden vor dem Merken eingetragen. Trennt Ablesefehler von Merkfehlern.</p>
+    </div>
+    <button class="btn" id="iGo">LAUF STARTEN</button>
+    <button class="btn ghost" id="iZurueck">ZURÜCK ZUM HAUPTMENÜ</button>`;
+  const info={
+    leicht:'Drei Instrumente: Höhe, Fahrt, Kurs.',
+    mittel:'Vier Instrumente: zusätzlich Steigrate.',
+    schwer:'Fünf Instrumente: Leistung und Funk statt Steigrate, feinere Werte.'
+  };
+  const setInfo=()=>document.getElementById('iStInfo').textContent=info[INST.stufe];
+  setInfo();
+  const bind=(id,fn)=>document.getElementById(id).addEventListener('click',e=>{
+    const b=e.target.closest('.chip'); if(b) fn(b);
+  });
+  bind('iSt',b=>{INST.stufe=b.dataset.v;markOne('iSt',b);setInfo();});
+  bind('iBl',b=>{INST.bloecke=+b.dataset.v;markOne('iBl',b);});
+  bind('iPa',b=>{INST.pause=+b.dataset.v;markOne('iPa',b);});
+  bind('iAb',b=>{INST.ablese=b.dataset.v==='1';markOne('iAb',b);});
+  bind('iRe',b=>{INST.rechnen=b.dataset.v==='1';markOne('iRe',b);});
+  document.getElementById('iGo').addEventListener('click',startInstrSession);
+  document.getElementById('iZurueck').addEventListener('click',renderMenu);
+}
+function startInstrSession(){
+  S={block:0, ab:{ok:0,n:0}, ri:{ok:0,n:0}, cRe:{ok:0,n:0}, wtrace:[], werte:null, rtAbruf:[], best:0, streak:0,
+     felder: instFelder(INST.stufe)};
+  const boxen=S.felder.map(f=>FELD[f].label.charAt(0));
+  slot.innerHTML='<span class="lbl">SPEICHER</span>'+boxen.map(b=>`<span class="box">${b}</span>`).join('');
+  menuBtn.classList.remove('hidden');
+  instNextBlock();
+}
+function instNextBlock(){
+  if(!S) return;
+  S.block++;
+  if(S.block>INST.bloecke) return renderInstrResults();
+  prog.style.width=Math.round((S.block-1)/INST.bloecke*100)+'%';
+  // zeigeAnzeige/randWerte richten sich nach CFG.stufe und CFG.ablese. Beide
+  // werden nur waehrend dieses einen, synchron laufenden Aufrufs gelesen,
+  // danach sofort wieder auf die Haupteinstellung zurueckgesetzt. So bleibt
+  // die Haupteinstellung unangetastet, auch wenn der Lauf mittendrin über
+  // die Menütaste abgebrochen wird.
+  const cfgAlt={stufe:CFG.stufe, ablese:CFG.ablese};
+  CFG.stufe=INST.stufe; CFG.ablese=INST.ablese;
+  S.werte=randWerte(); S.wtrace=[`<b>1</b>  Anzeige`];
+  zeigeAnzeige('ANZEIGE MERKEN', ()=>{
+    const zurAbfrage=()=>wartenVorAbfrage(INST.pause, ()=>recallWerte(instNextBlock));
+    if(INST.rechnen) instRechenaufgabe(zurAbfrage);
+    else zurAbfrage();
+  });
+  CFG.stufe=cfgAlt.stufe; CFG.ablese=cfgAlt.ablese;
+}
+function instRechenaufgabe(next){
+  if(!S) return;
+  clearTimers(); keyMode='zahl'; slot.classList.remove('hidden'); beep(700,120);
+  // genDreisatz richtet sich ebenfalls nach CFG.stufe, auch hier nur kurz und
+  // synchron umgeschaltet, siehe Hinweis in instNextBlock.
+  const cfgAlt={stufe:CFG.stufe};
+  CFG.stufe=INST.stufe;
+  const q=genDreisatz();
+  CFG.stufe=cfgAlt.stufe;
+  const secs=INST.stufe==='leicht'?30:INST.stufe==='mittel'?24:18;
+  view.innerHTML=`
+    <div class="card">
+      <div class="qhead">
+        <span class="tag">RECHENAUFGABE</span>
+        <span class="tclock mono">BLOCK ${S.block}/${INST.bloecke}</span>
+      </div>
+      <div class="question">${q.frage}</div>
+      <div class="answer">
+        <input id="inp" type="text" inputmode="decimal" autocomplete="off" placeholder="?">
+        <button id="ok">OK</button>
+      </div>
+      <div class="unit">${q.einheit||''}</div>
+      <div class="tbar" id="tb"><span id="tbf"></span></div>
+    </div>
+    <div id="fbHost"></div>`;
+  const finish=val=>{
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    clearTimers(); keyMode=null;
+    const ok=val!==null&&check(q,val);
+    S.cRe.n++; if(ok) S.cRe.ok++;
+    if(ok){S.streak++;S.best=Math.max(S.best,S.streak);beep(1050,90);} else {S.streak=0;beep(240,180);buzz(60);}
+    document.getElementById('fbHost').innerHTML=`
+      <div class="fb ${ok?'ok':'no'}">
+        <div class="verdict">${ok?'RICHTIG':(val===null?'ZEIT ABGELAUFEN':'FALSCH')}</div>
+        <div class="sol">Lösung: ${q.loesung}${q.einheit?' '+q.einheit:''}</div>
+        <ul class="weg">${(q.weg||[]).map(w=>`<li>${w}</li>`).join('')}</ul>
+        <p class="tip">${q.hinweis||''}</p>
+      </div>
+      <button class="btn" id="weiter">WEITER</button>`;
+    document.getElementById('inp').disabled=true;
+    document.getElementById('ok').disabled=true;
+    warteAufWeiter(next);
+  };
+  const inp=document.getElementById('inp');
+  const send=()=>{const v=inp.value.trim(); if(v!=='') finish(v);};
+  document.getElementById('ok').addEventListener('click',send);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')send();});
+  setTimeout(()=>inp.focus(),60);
+  const fill=document.getElementById('tbf'), bar=document.getElementById('tb'), t0=Date.now();
+  tickId=setInterval(()=>{
+    const p=1-(Date.now()-t0)/(secs*1000);
+    fill.style.width=Math.max(0,p*100)+'%';
+    if(p<.25) bar.classList.add('low');
+    if(p<=0) finish(null);
+  },100);
+}
+function wartenVorAbfrage(secs,next){
+  if(!secs){ next(); return; }
+  clearTimers(); keyMode='hold'; slot.classList.add('hidden'); beep(500,100);
+  view.innerHTML=`
+    <div class="card" style="text-align:center">
+      <div class="eyebrow">ANZEIGE AUS</div>
+      <p class="hold">Werte im Kopf behalten. Gleich wird abgefragt.</p>
+      <div class="countdown mono" id="cd">${secs}</div>
+    </div>
+    <button class="btn ghost" id="skip">JETZT ABFRAGEN</button>`;
+  let left=secs; const el=document.getElementById('cd');
+  const done=()=>{clearTimers();keyMode=null;next();};
+  tickId=setInterval(()=>{left--;if(el)el.textContent=left;if(left<=0)done();},1000);
+  document.getElementById('skip').addEventListener('click',done);
+  showLetter.done=done;
+}
+function renderInstrResults(){
+  clearTimers(); keyMode=null; contFn=null;
+  slot.classList.add('hidden'); menuBtn.classList.add('hidden'); prog.style.width='100%';
+  const pc=o=>o.n?Math.round(o.ok/o.n*100):0;
+  const rtB=med(S.rtAbruf);
+  view.innerHTML=`
+    <div class="eyebrow">AUSWERTUNG</div>
+    <h1>Instrumententraining beendet</h1>
+    <div class="card" style="text-align:center">
+      <div class="num mono" style="font-size:64px;font-weight:700;color:var(--amber);line-height:1">${pc(S.ri)}%</div>
+      <div class="lbl" style="font-size:11px;letter-spacing:3px;color:var(--dim);margin-top:4px">WERTE RICHTIG ERINNERT</div>
+    </div>
+    <div class="card">
+      <div class="opt">Einzelheiten</div>
+      <div class="stat"><span class="k">Instrumentenwerte erinnert</span><span class="v" style="color:var(--amber)">${S.ri.ok}/${S.ri.n} · ${pc(S.ri)}%</span></div>
+      ${S.ab.n?`<div class="stat"><span class="k">Ablesung an der Anzeige</span><span class="v">${S.ab.ok}/${S.ab.n} · ${pc(S.ab)}%</span></div>`:''}
+      ${S.cRe.n?`<div class="stat"><span class="k">Rechenaufgabe gelöst</span><span class="v">${S.cRe.ok}/${S.cRe.n} · ${pc(S.cRe)}%</span></div>`:''}
+      <div class="stat"><span class="k">Abrufzeit bei der Abfrage</span><span class="v">${(rtB/1000).toFixed(1)} s</span></div>
+      <div class="stat"><span class="k">Längste fehlerfreie Serie</span><span class="v">${S.best}</span></div>
+      <div class="stat"><span class="k">Stufe</span><span class="v">${INST.stufe.toUpperCase()} · ${S.felder.length} Instrumente</span></div>
+      ${S.ab.n&&S.ri.n&&pc(S.ab)<pc(S.ri)+1?`<p class="sub" style="margin-top:8px;font-size:12px">Ein Teil der Fehler entsteht bereits beim Ablesen, nicht erst beim Merken.</p>`:''}
+    </div>
+    <button class="btn" id="again">NEUER LAUF</button>
+    <button class="btn ghost" id="home">HAUPTMENÜ</button>`;
+  document.getElementById('again').addEventListener('click',startInstrSession);
+  document.getElementById('home').addEventListener('click',renderMenu);
+}
 
 /* =========================================================
    Ansicht: Würfel lernen
