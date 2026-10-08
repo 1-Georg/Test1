@@ -323,8 +323,8 @@ function altBaroFt(){ return Math.round(SYS.altBaroBase + (SYS.baro-1013)*27); }
 
 function zufallsWerte(){
   SYS.instrVals={
-    toel: rnd(10,55)/10, eoel: rnd(20,65)/10, ffl: rnd(4,28),
-    ttemp: rnd(-4,14), etemp: rnd(-4,14), fqty: rnd(5,68)/10,
+    toel: rnd(10,55)/10, eoel: rnd(20,65)/10, ffl: kraftstoffWert('ffl'),
+    ttemp: rnd(-4,14), etemp: rnd(-4,14), fqty: kraftstoffWert('fqty'),
     hyd: rnd(4,32)/10, extemp: rnd(15,92)/10, volt: rnd(30,92)/100
   };
   SYS.main={ torque:rnd(8,32)/10, ias:rnd(40,160), pitch:rnd(-12,12), bank:rnd(-45,45), slip:rnd(-8,8)/10, vsi:rnd(-1600,1600) };
@@ -576,6 +576,7 @@ function svgRund(v,cfg){
   if(cfg.redAt!==undefined){ const a=(deg(cfg.redAt)-90)*Math.PI/180;
     arcs+=`<line x1="${50+30*Math.cos(a)}" y1="${50+30*Math.sin(a)}" x2="${50+40*Math.cos(a)}" y2="${50+40*Math.sin(a)}" stroke="#ff5c5c" stroke-width="2.6"/>`; }
   if(cfg.redFrom!==undefined) arcs+=bogen(cfg.redFrom,cfg.redTo,'#ff5c5c',2.4);
+  if(cfg.rot) cfg.rot.forEach(r=>{ arcs+=bogen(r[0],r[1],'#ff5c5c',2.6); });
   const a=(deg(v)-90)*Math.PI/180;
   return gaugeSvg(arcs + m
     + `<text x="50" y="80" class="dlbl" style="font-size:5px;letter-spacing:.3px">${cfg.unit}</text>`
@@ -615,8 +616,8 @@ const INSTR=[
   cfg:{min:0,max:7,major:1,unit:'kp/cm²',greenFrom:4,greenTo:6.5,redAt:6.8},
   hint:'Der Betriebsbereich liegt zwischen 4 und 6,5 kp/cm². Ab 6,8 kp/cm² ist die Grenze markiert.'},
  {key:'ffl', name:'FUEL FLOW', kurz:'Kraftstoffdurchfluss',
-  cfg:{min:0,max:30,major:5,unit:'x10 kg/h'},
-  hint:'Zeigt den Kraftstoffdurchfluss in Zehnfach-Kilogramm je Stunde an.'},
+  cfg:{min:0,max:30,major:5,minor:1,unit:'x10 kg/h',greenFrom:6,greenTo:25,rot:[[0,6],[25,30]]},
+  hint:'Anzeige in Zehnfach-Kilogramm je Stunde. Grün ist der normale Betrieb, rot zu wenig oder zu viel Durchfluss.'},
  {key:'ttemp', name:'TRANSMISSION OIL TEMPERATURE', kurz:'Getriebeöltemperatur',
   cfg:{min:-5,max:15,major:5,unit:'x10 °C',redAt:13},
   hint:'Anzeige in Zehnfach-Grad-Celsius. Ab etwa 130 Grad ist die Grenze markiert.'},
@@ -624,8 +625,8 @@ const INSTR=[
   cfg:{min:-5,max:15,major:5,unit:'x10 °C'},
   hint:'Anzeige in Zehnfach-Grad-Celsius, wie die Getriebeöltemperatur.'},
  {key:'fqty', name:'FUEL QUANTITY', kurz:'Kraftstoffvorrat',
-  cfg:{min:0,max:7,major:1,unit:'x100 kg'},
-  hint:'Anzeige in Hundertfach-Kilogramm verbliebenem Kraftstoff.'},
+  cfg:{min:0,max:7,major:1,minor:.5,unit:'x100 kg',greenFrom:1,greenTo:7,rot:[[0,1]]},
+  hint:'Anzeige in Hundertfach-Kilogramm verbliebenem Kraftstoff. Rot bedeutet Kraftstoffmangel.'},
  {key:'hyd', name:'HYDRAULIC PRESSURE', kurz:'Hydraulikdruck',
   cfg:{min:0,max:3.5,major:.5,minor:.5,decimals:1,unit:'kp/cm²',greenFrom:.5,greenTo:3.0,redFrom:3.3,redTo:3.5},
   hint:'Der Betriebsbereich reicht bis etwa 3,0 kp/cm², darüber beginnt die rote Markierung.'},
@@ -637,6 +638,15 @@ const INSTR=[
   hint:'Zeigt die Bordspannung. Der rote Bereich am rechten Ende bedeutet Überspannung.'}
 ];
 function instrByKey(k){ return INSTR.find(i=>i.key===k); }
+/* Kraftstoffanzeigen: bei jedem Prüfen ein neuer Wert, etwa neun von zehn
+   Mal im grünen Bereich, sonst im roten. Werte halten Abstand zu den
+   Bereichsgrenzen, damit die Zuordnung eindeutig ablesbar bleibt. */
+function kraftstoffWert(key){
+  const rot=Math.random()<0.1;
+  if(key==='fqty') return rot ? rnd(1,7)/10 : rnd(15,68)/10;
+  if(key==='ffl') return rot ? (Math.random()<.5 ? rnd(5,45)/10 : rnd(265,295)/10) : rnd(80,230)/10;
+  return SYS.instrVals[key];
+}
 
 /* =========================================================
    Alarmtafel
@@ -1464,7 +1474,8 @@ const actions={
   commFrac:(side,arg)=>commAdjFrac(+arg),
   commSwap:()=>commSwap(),
   baroAdj:(side,arg)=>baroAdj(+arg),
-  openInstr:(side,arg)=>{ MFD[side].screen='instru_detail'; MFD[side].instruSel=arg; },
+  openInstr:(side,arg)=>{ MFD[side].screen='instru_detail'; MFD[side].instruSel=arg;
+    if(arg==='ffl'||arg==='fqty') SYS.instrVals[arg]=kraftstoffWert(arg); },
   randomAll:()=>zufallsWerte(),
   battToggle:()=>{ SYS.battery=!SYS.battery; },
   genToggle:()=>{ SYS.generator=!SYS.generator; },
