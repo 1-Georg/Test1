@@ -270,6 +270,14 @@ h2{font-size:16px;font-weight:700;margin-bottom:2px;letter-spacing:.3px}
 .pprot{max-height:130px;overflow:auto;margin-top:8px}
 .plogz{font-family:var(--mono);font-size:10.5px;color:var(--dim);padding:2px 0;line-height:1.35}
 .plogz b{color:var(--text)}
+.btext .zielfeld{white-space:nowrap}
+/* Schmale Bildschirme: Kennung und ERLEDIGT oben, der Auftrag darunter
+   über die volle Breite, damit die Rendezvouspunkte nicht zerquetscht werden */
+@media (max-width:600px){
+  .breihe{flex-wrap:wrap;justify-content:space-between;row-gap:6px}
+  .bmitte{order:3;flex-basis:100%}
+  .berledigt{padding:11px 18px}
+}
 @media (min-width:860px) and (orientation:landscape){
   .bkennung{font-size:34px}
   .btext{font-size:17px}
@@ -929,82 +937,46 @@ function datensaetzeBauen(missionsnummer){
 }
 /* Auftragstexte, exakt dieselbe Formel wie im Pruefer-Simulator.
    Dadurch steht hier derselbe Auftrag, den der Pruefer zur Kennung ansagt. */
-/* Ziele nach der offiziellen Prüfungskarte, Raum Ottawa und Hull.
-   Reportingpoints, Ortschaften, markante Ziele und Straßen wie im Original. */
-const RPS=[5,10,11,12,13,14,15,16,17,20,21,22,23,24,26,30,31,32,34,80];
-const ORTSCHAFTEN=[
-  {n:'Hull',g:'n'}, {n:'Aylmer',g:'n'}, {n:'Britannia',g:'n'},
-  {n:'Rockcliffe',g:'n'}, {n:'Eastview',g:'n'}, {n:'Uplands',g:'n'}, {n:'Leitrim',g:'n'}
-];
-/* Jedes Ziel liegt an seinem tatsächlichen Ort auf der Karte. Der Ort wird
-   mitgeführt, damit keine widersprüchlichen Angaben entstehen. */
-const ZIELE=[
-  {n:'Central Hospital',g:'n',ort:'Ottawa'},
-  {n:'Football Stadium',g:'n',ort:'Ottawa'},
-  {n:'Baseball Stadium',g:'n',ort:'Eastview'},
-  {n:'Ottawa International Airport',g:'m',ort:'Uplands'},
-  {n:'CFB Ottawa North',g:'n',ort:'Rockcliffe'},
-  {n:'Finanzdistrikt',g:'m',ort:'Hull'},
-  {n:'Triple Tower',g:'m',ort:'Rockcliffe'},
-  {n:'Kirche',g:'f',ort:'Eastview'},
-  {n:'Yachthafen',g:'m',ort:'Britannia'}
-];
-const GEWAESSER=[
-  {n:'Ottawa River',g:'m'}, {n:'Rideau River',g:'m'},
-  {n:'Mud Lake',g:'m'},     {n:'Bate Island',g:'f'}
-];
-const STRASSEN=['Queensway','Carling Avenue','Richmond Road','Baseline Road',
-  'Woodroffe Boulevard','Riverside Boulevard','Smyth Road','Main Street',
-  'St Laurent Boulevard','Scott Street','Chemin Aylmer','Transitway'];
-const zuDat=o=>(o.g==='f'?'zur ':'zum ')+o.n;
-const anDat=o=>(o.g==='f'?'an der ':'am ')+o.n;
-const akkA =o=>(o.g==='f'?'die ':o.g==='m'?'den ':'das ')+o.n;
-const inOrt=o=>(o.g==='f'?'in der ':'in ')+o.n;
+/* Treffpunkte nach der offiziellen Prüfungskarte (SAR Mission, Raum Ottawa
+   und Hull). Verwendet werden nur die nummerierten Rendezvouspunkte zwischen
+   10 und 32, die tatsächlich auf der Karte stehen. */
+const RPS=[10,11,12,13,14,15,16,17,20,21,22,23,24,26,30,31,32];
 const PERSONEN=[
-  {akk:'den Arzt',dat:'dem Arzt'}, {akk:'den Verletzten',dat:'dem Verletzten'},
-  {akk:'den Techniker',dat:'dem Techniker'}, {akk:'den Beobachter',dat:'dem Beobachter'},
-  {akk:'die Sanitäterin',dat:'der Sanitäterin'}
+  {akk:'den Arzt',pro:'ihn'}, {akk:'den Verletzten',pro:'ihn'},
+  {akk:'den Techniker',pro:'ihn'}, {akk:'den Beobachter',pro:'ihn'},
+  {akk:'die Sanitäterin',pro:'sie'}, {akk:'den Feuerwehrmann',pro:'ihn'}
 ];
 const FRACHT=[
-  {akk:'die Medikamente',  dat:'den Medikamenten',  pro:'sie'},
-  {akk:'das Ersatzteil',   dat:'dem Ersatzteil',    pro:'es'},
-  {akk:'die Ausrüstung',   dat:'der Ausrüstung',    pro:'sie'},
-  {akk:'die Blutkonserven',dat:'den Blutkonserven', pro:'sie'}
+  {akk:'die Medikamente',pro:'sie'}, {akk:'das Ersatzteil',pro:'es'},
+  {akk:'die Ausrüstung',pro:'sie'},  {akk:'die Blutkonserven',pro:'sie'},
+  {akk:'das Funkgerät',pro:'es'}
 ];
 function auftragTextBauen(missionsnummer, kennung){
   const i=INFO1_KEYS.indexOf(kennung);
   const r=mulberry32(missionsnummer*100+i*7+3);
   const w=(arr)=>arr[Math.floor(r()*arr.length)];
-  const RP=n=>`<b class="zielfeld">RP ${n}</b>`;
+  const RP=n=>`<b class="zielfeld">Rendezvouspunkt ${n}</b>`;
   const rp1=w(RPS);
   let rp2=w(RPS); if(rp2===rp1) rp2=RPS[(RPS.indexOf(rp1)+7)%RPS.length];
-  const ziel=w(ZIELE), ort=w(ORTSCHAFTEN), gew=w(GEWAESSER), str=w(STRASSEN);
   const art=r();
-  let text, feld='RP '+rp1;
-  if(art<.18){
+  let text;
+  if(art<.30){
     const p=w(PERSONEN);
-    text=`Fliegen Sie ${zuDat(ziel)} in ${ziel.ort} und nehmen Sie dort ${p.akk} auf.`;
-  } else if(art<.34){
-    const p=w(PERSONEN);
-    text=`Bringen Sie ${p.akk} vom ${RP(rp1)} ${zuDat(ziel)} und setzen Sie dort ab.`;
-    feld='RP '+rp1;
-  } else if(art<.48){
+    text=`Nehmen Sie ${p.akk} am ${RP(rp1)} auf und bringen Sie ${p.pro} zum ${RP(rp2)}.`;
+  } else if(art<.50){
     const f=w(FRACHT);
-    text=`Nehmen Sie ${f.akk} am ${RP(rp1)} auf und bringen Sie ${f.pro} ${zuDat(ziel)}.`;
-  } else if(art<.60){
+    text=`Nehmen Sie ${f.akk} am ${RP(rp1)} auf und bringen Sie ${f.pro} zum ${RP(rp2)}.`;
+  } else if(art<.62){
+    const p=w(PERSONEN);
+    text=`Fliegen Sie zum ${RP(rp1)} und nehmen Sie dort ${p.akk} auf.`;
+  } else if(art<.74){
     text=`Fliegen Sie zum ${RP(rp1)}, dann weiter zum ${RP(rp2)} und melden Sie sich dort.`;
-    feld='RP '+rp1;
-  } else if(art<.72){
-    text=`Suchen Sie den Abschnitt ${akkA(gew)} zwischen ${RP(rp1)} und ${RP(rp2)} ab.`;
-  } else if(art<.82){
-    text=`Folgen Sie der ${str} von ${ort.n} bis zum ${RP(rp1)}.`;
-  } else if(art<.90){
-    text=`Überfliegen Sie ${ziel.ort} und melden Sie die Lage ${anDat(ziel)}.`;
-    feld=ziel.ort;
+  } else if(art<.86){
+    text=`Suchen Sie das Gelände zwischen ${RP(rp1)} und ${RP(rp2)} ab.`;
   } else {
     text=`Halten Sie am ${RP(rp1)} und warten Sie dort auf weitere Anweisungen.`;
   }
-  return { text, feld };
+  return { text, feld:'RP '+rp1 };
 }
 let INFO1_DATEN = datensaetzeBauen(1013);
 

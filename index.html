@@ -2130,6 +2130,8 @@ function hoerZwischenfrage(next){
     }));
   });
 }
+/* Rendezvouspunkte der offiziellen Prüfungskarte, nur die Nummern 10 bis 32 */
+const RVP=[10,11,12,13,14,15,16,17,20,21,22,23,24,26,30,31,32];
 const HOER_PERSONEN=[
   {akk:'den Arzt',pron:'ihn'}, {akk:'die Sanitäterin',pron:'sie'},
   {akk:'den Verletzten',pron:'ihn'}, {akk:'den Techniker',pron:'ihn'},
@@ -2160,22 +2162,22 @@ const HOER_ARTEN=[
     return { text:`Transpondercode ${zifferWeise(c)}. Steigen Sie auf ${h} Fuß.`,
       felder:[{k:'sq',label:'CODE',einheit:'',soll:c},
               {k:'alt',label:'HÖHE',einheit:'ft',soll:String(h)}] }; },
-  ()=>{ const felder=['Anton','Berta','Cäsar','Dora','Emil','Friedrich'];
+  ()=>{ const felder=RVP.map(String);
     const p1=pick(felder), p2=pick(felder.filter(x=>x!==p1));
     const k=rnd(0,35)*10, v=rnd(6,14)*10;
-    return { text:`Fliegen Sie über Punkt ${p1} nach Punkt ${p2}. Kurs ${zifferWeise(pad3(k))}, Geschwindigkeit ${v} Knoten.`,
+    return { text:`Fliegen Sie über Rendezvouspunkt ${p1} zum Rendezvouspunkt ${p2}. Kurs ${zifferWeise(pad3(k))}, Geschwindigkeit ${v} Knoten.`,
       felder:[{k:'hdg',label:'KURS',einheit:'Grad',soll:String(k)},
               {k:'ias',label:'GESCHWINDIGKEIT',einheit:'kt',soll:String(v)}],
-      wahl:{label:'ZIELPUNKT', optionen:shuffle(felder).slice(0,4).concat(p2).filter((x,i,a)=>a.indexOf(x)===i).slice(0,5), soll:p2} }; },
+      wahl:{label:'ZIELPUNKT', optionen:shuffle(shuffle(felder.filter(x=>x!==p2)).slice(0,4).concat(p2)), soll:p2} }; },
   ()=>{ const a=rnd(2,9), b=rnd(2,9), c=rnd(2,9), d=rnd(2,9);
     return { text:`Merken Sie die Zahlenfolge. ${a}. ${b}. ${c}. ${d}.`,
       felder:[{k:'folge',label:'ZAHLENFOLGE',einheit:'',soll:`${a}${b}${c}${d}`,hinweis:'ohne Leerzeichen'}] }; },
   /* Auftrag mit Vorfallsort. Der Vorfall selbst wird als Mehrfachauswahl
      abgefragt, damit nicht nur Zahlen, sondern auch der Inhalt hängen bleibt. */
-  ()=>{ const p1=rnd(1,30); let p2=rnd(1,30); while(p2===p1) p2=rnd(1,30);
+  ()=>{ const p1=pick(RVP); const p2=pick(RVP.filter(x=>x!==p1));
     const pers=pick(HOER_PERSONEN), inz=pick(HOER_VORFAELLE);
     const ablenker=shuffle(HOER_VORFAELLE.filter(x=>x!==inz)).slice(0,3);
-    return { text:`Auftrag. Nehmen Sie ${pers.akk} am Punkt ${p1} auf. Dort befindet sich ${inz}. Bringen Sie ${pers.pron} zum Punkt ${p2}.`,
+    return { text:`Auftrag. Nehmen Sie ${pers.akk} am Rendezvouspunkt ${p1} auf. Dort befindet sich ${inz}. Bringen Sie ${pers.pron} zum Rendezvouspunkt ${p2}.`,
       felder:[{k:'p1',label:'AUFNAHMEPUNKT',einheit:'',soll:String(p1)},
               {k:'p2',label:'ZIELPUNKT',einheit:'',soll:String(p2)}],
       wahl:{label:'WAS BEFAND SICH AM AUFNAHMEPUNKT?', optionen:shuffle(ablenker.concat([inz])), soll:inz} }; },
