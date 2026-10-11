@@ -138,6 +138,21 @@ h2{font-size:19px;font-weight:600;letter-spacing:.5px;margin-bottom:4px}
 .farbwahl{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}
 .farbwahl button{aspect-ratio:1/1;border:none;border-radius:50%;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.5)}
 .zaehler{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--dim);margin-top:10px}
+.fkfrage{margin-top:14px}
+.fklbl{font-size:12px;letter-spacing:1px;color:var(--amber);font-weight:700}
+.fkfrage .row,.fkfrage .grid2{margin-top:6px}
+.fkfrage .grid2 .chip{font-size:12.5px;padding:10px 4px}
+.fkfrage .row.stack .chip{font-size:12.5px;padding:10px 12px}
+.fkein{display:flex;align-items:center;gap:10px;margin-top:6px}
+.fkein input{flex:1;min-width:0;background:#0b1119;border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:20px;padding:11px 10px;text-align:center;letter-spacing:2px;outline:none}
+.fkein input:focus{border-color:var(--amber)}
+.fkein span{width:44px;font-size:11px;color:var(--dim)}
+.fkein input.gut{border-color:var(--green);color:var(--green)}
+.fkein input.schlecht{border-color:var(--red);color:var(--red)}
+.chip.richtig{border-color:var(--green);color:var(--green);background:rgba(61,220,132,.12)}
+.chip.falsch{border-color:var(--red);color:var(--red);background:rgba(255,92,92,.1)}
+.fb .tip{font-size:13px;line-height:1.5;color:var(--dim)}
+.fb .tip b{color:var(--text)}
 .frow{display:flex;align-items:center;gap:10px;margin-top:10px}
 .frow label{width:64px;font-size:11px;letter-spacing:2px;color:var(--amber);font-weight:700}
 .frow input{flex:1;min-width:0;background:#0b1119;border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:20px;padding:12px 10px;text-align:center;letter-spacing:2px;outline:none}
@@ -2008,26 +2023,47 @@ function showWerte(eyebrow,w,text,secs,next,danger){
    installiert sind. Gewählt wird die hochwertigste deutsche.
    ========================================================= */
 let STIMMEN=[], STIMME=null;
+/* Spaßstimmen von iOS und macOS klingen für Funksprüche unbrauchbar */
+const SPASS_STIMMEN=/^(eddy|flo|grandma|grandpa|oma|opa|reed|rocko|sandy|shelley|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|fred|junior|kathy|ralph)\b/i;
+const GUTE_STIMMEN=/(petra|helena|markus|yannick|martin|katja|conrad|amala|hedda|stefan|vicki|google deutsch)/i;
+function stimmeRang(v){
+  let r=0;
+  if(/anna/i.test(v.name)||/anna/i.test(v.voiceURI||'')) r+=20;
+  if(/premium|enhanced|erweitert|neural/i.test(v.name+' '+(v.voiceURI||''))) r+=6;
+  if(GUTE_STIMMEN.test(v.name)) r+=3;
+  if(SPASS_STIMMEN.test(v.name)) r-=30;
+  if(v.localService) r+=1;
+  if(/^de-DE/i.test(v.lang)) r+=1;
+  return r;
+}
 function stimmenLaden(){
   if(!('speechSynthesis' in window)) return;
   const alle=window.speechSynthesis.getVoices()||[];
   STIMMEN=alle.filter(v=>/^de/i.test(v.lang));
   if(!STIMMEN.length) STIMMEN=alle.slice(0,8);
-  // Hochwertige Stimmen bevorzugen, danach geräteeigene
-  const rang=v=>{
-    let r=0;
-    if(/premium|enhanced|neural|siri/i.test(v.name)) r+=4;
-    if(v.localService) r+=1;
-    if(/^de-DE/i.test(v.lang)) r+=1;
-    return r;
-  };
-  STIMMEN.sort((a,b)=>rang(b)-rang(a));
-  const gemerkt=(()=>{ try{ return localStorage.getItem('memops_stimme'); }catch(e){ return null; } })();
+  // Anna zuerst, dann hochwertige Stimmen, Spaßstimmen ganz ans Ende
+  STIMMEN.sort((a,b)=>stimmeRang(b)-stimmeRang(a));
+  const ernst=STIMMEN.filter(v=>!SPASS_STIMMEN.test(v.name));
+  if(ernst.length) STIMMEN=ernst;
+  const gemerkt=(()=>{ try{ return localStorage.getItem('memops_stimme2'); }catch(e){ return null; } })();
   STIMME = STIMMEN.find(v=>v.name===gemerkt) || STIMMEN[0] || null;
+}
+function annaDa(){ return STIMMEN.some(v=>/anna/i.test(v.name)||/anna/i.test(v.voiceURI||'')); }
+function stimmeWaehlen(name){
+  STIMME=STIMMEN.find(v=>v.name===name)||STIMME;
+  try{ localStorage.setItem('memops_stimme2',STIMME?STIMME.name:''); }catch(e){}
+}
+function stimmenOptionen(){
+  return STIMMEN.length
+    ? STIMMEN.map(v=>`<option value="${v.name}" ${STIMME&&v.name===STIMME.name?'selected':''}>${v.name}${/premium|enhanced|erweitert/i.test(v.name+' '+(v.voiceURI||''))?' · hochwertig':''}</option>`).join('')
+    : '<option>keine Stimme gefunden</option>';
 }
 if('speechSynthesis' in window){
   stimmenLaden();
-  window.speechSynthesis.onvoiceschanged=stimmenLaden;
+  window.speechSynthesis.onvoiceschanged=()=>{ stimmenLaden();
+    // Stimmen kommen auf iOS oft erst verzögert, dann die Auswahl auffrischen
+    ['rVoice','fVoice'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=stimmenOptionen(); });
+    const h=document.getElementById('fAnnaHinweis'); if(h) h.style.display=annaDa()?'none':''; };
 }
 /* Stimmen aus dem Netz. Sie klingen deutlich natuerlicher als die
    Geraetestimmen. Faellt das Netz aus, wird still auf die Geraetestimme
@@ -2130,7 +2166,7 @@ function hoerZwischenfrage(next){
     }));
   });
 }
-/* Rendezvouspunkte der offiziellen Prüfungskarte, nur die Nummern 10 bis 32 */
+/* Punkte der offiziellen Prüfungskarte, nur die Nummern 10 bis 32 */
 const RVP=[10,11,12,13,14,15,16,17,20,21,22,23,24,26,30,31,32];
 const HOER_PERSONEN=[
   {akk:'den Arzt',pron:'ihn'}, {akk:'die Sanitäterin',pron:'sie'},
@@ -2165,7 +2201,7 @@ const HOER_ARTEN=[
   ()=>{ const felder=RVP.map(String);
     const p1=pick(felder), p2=pick(felder.filter(x=>x!==p1));
     const k=rnd(0,35)*10, v=rnd(6,14)*10;
-    return { text:`Fliegen Sie über Rendezvouspunkt ${p1} zum Rendezvouspunkt ${p2}. Kurs ${zifferWeise(pad3(k))}, Geschwindigkeit ${v} Knoten.`,
+    return { text:`Fliegen Sie über Punkt ${p1} zum Punkt ${p2}. Kurs ${zifferWeise(pad3(k))}, Geschwindigkeit ${v} Knoten.`,
       felder:[{k:'hdg',label:'KURS',einheit:'Grad',soll:String(k)},
               {k:'ias',label:'GESCHWINDIGKEIT',einheit:'kt',soll:String(v)}],
       wahl:{label:'ZIELPUNKT', optionen:shuffle(shuffle(felder.filter(x=>x!==p2)).slice(0,4).concat(p2)), soll:p2} }; },
@@ -2177,7 +2213,7 @@ const HOER_ARTEN=[
   ()=>{ const p1=pick(RVP); const p2=pick(RVP.filter(x=>x!==p1));
     const pers=pick(HOER_PERSONEN), inz=pick(HOER_VORFAELLE);
     const ablenker=shuffle(HOER_VORFAELLE.filter(x=>x!==inz)).slice(0,3);
-    return { text:`Auftrag. Nehmen Sie ${pers.akk} am Rendezvouspunkt ${p1} auf. Dort befindet sich ${inz}. Bringen Sie ${pers.pron} zum Rendezvouspunkt ${p2}.`,
+    return { text:`Auftrag. Nehmen Sie ${pers.akk} am Punkt ${p1} auf. Dort befindet sich ${inz}. Bringen Sie ${pers.pron} zum Punkt ${p2}.`,
       felder:[{k:'p1',label:'AUFNAHMEPUNKT',einheit:'',soll:String(p1)},
               {k:'p2',label:'ZIELPUNKT',einheit:'',soll:String(p2)}],
       wahl:{label:'WAS BEFAND SICH AM AUFNAHMEPUNKT?', optionen:shuffle(ablenker.concat([inz])), soll:inz} }; },
@@ -2292,7 +2328,7 @@ function konfText(){
     Merken: ${merk.join(', ')} · ${arten} Aufgabenarten${CFG.doppel?' · Doppelaufgabe':''}${CFG.ablese?' · Ablesekontrolle':''}`;
 }
 function renderMenu(){
-  clearTimers(); nebenStop(); keyMode=null; contFn=null; S=null;
+  clearTimers(); nebenStop(); sprichStop(); keyMode=null; contFn=null; S=null;
   slot.classList.add('hidden'); menuBtn.classList.add('hidden'); prog.style.width='0%';
   view.innerHTML=`
     <div class="eyebrow">ARBEITSGEDÄCHTNIS UNTER STÖRLAST</div>
@@ -2308,6 +2344,7 @@ function renderMenu(){
       <button class="btn" id="go">LAUF STARTEN</button>
       <button class="btn ghost" id="hist">VERLAUF</button>
       <button class="btn ghost" id="instr">NUR INSTRUMENTE</button>
+      <button class="btn ghost" id="funk">FUNKSPRÜCHE MERKEN</button>
       <button class="btn ghost" id="lernen">WÜRFEL LERNEN</button>
     </div>
 
@@ -2350,9 +2387,7 @@ function renderMenu(){
         <p class="sub" style="margin-top:8px;font-size:12px">Während aller Aufgaben tauchen vereinzelt Kreise auf, in Abständen von mehreren Sekunden. Nur die in der gemerkten Farbe werden nebenbei angetippt.</p>
         <div class="opt" style="margin-top:16px">Stimme für Höraufgaben</div>
         <select id="rVoice" class="vsel">
-          ${STIMMEN.length
-            ? STIMMEN.map(v=>`<option value="${v.name}" ${STIMME&&v.name===STIMME.name?'selected':''}>${v.name}${/premium|enhanced|neural/i.test(v.name)?' · hochwertig':''}</option>`).join('')
-            : '<option>keine Stimme gefunden</option>'}
+          ${stimmenOptionen()}
         </select>
         <div class="row" style="margin-top:8px">
           <button class="chip" id="vProbe">PROBEHÖREN</button>
@@ -2394,8 +2429,7 @@ function renderMenu(){
   bind('rDo',b=>{CFG.doppel=b.dataset.v==='1';markOne('rDo',b);});
   const vs=document.getElementById('rVoice');
   if(vs) vs.addEventListener('change',()=>{
-    STIMME=STIMMEN.find(v=>v.name===vs.value)||STIMME;
-    try{ localStorage.setItem('memops_stimme',vs.value); }catch(e){}
+    stimmeWaehlen(vs.value);
     spracheFreischalten();
     sprich('Kurs zwei sieben null, Geschwindigkeit einhundertzwanzig Knoten.');
   });
@@ -2424,6 +2458,7 @@ function renderMenu(){
   ['hist','hist2'].forEach(id=>{const b=document.getElementById(id); if(b) b.addEventListener('click',renderVerlauf);});
   const bl=document.getElementById('lernen'); if(bl) bl.addEventListener('click',()=>{ LK.lektion=0; renderLernen(); });
   const bi=document.getElementById('instr'); if(bi) bi.addEventListener('click',renderInstrMenu);
+  const bf=document.getElementById('funk'); if(bf) bf.addEventListener('click',renderFunkMenu);
   const umschalten=()=>{
     optsOffen=!optsOffen;
     renderMenu();
@@ -3240,6 +3275,373 @@ function renderInstrResults(){
     <button class="btn" id="again">NEUER LAUF</button>
     <button class="btn ghost" id="home">HAUPTMENÜ</button>`;
   document.getElementById('again').addEventListener('click',startInstrSession);
+  document.getElementById('home').addEventListener('click',renderMenu);
+}
+
+/* =========================================================
+   Funksprüche merken: ein gesprochener Funkspruch mit mehreren
+   flugtypischen Inhalten, direkt danach wird alles abgefragt
+   ========================================================= */
+let FUNK={stufe:'mittel', anzahl:8, wiederholen:false};
+const FK_RUF=['Adler','Falke','Condor','Sperber','Habicht','Bussard'];
+const FK_PERSONEN=[
+  {akk:'den Arzt',pro:'ihn',n:'Arzt'}, {akk:'den Verletzten',pro:'ihn',n:'Verletzter'},
+  {akk:'den Techniker',pro:'ihn',n:'Techniker'}, {akk:'den Beobachter',pro:'ihn',n:'Beobachter'},
+  {akk:'die Sanitäterin',pro:'sie',n:'Sanitäterin'}, {akk:'den Feuerwehrmann',pro:'ihn',n:'Feuerwehrmann'}
+];
+const FK_FRACHT=[
+  {akk:'die Medikamente',pro:'sie',n:'Medikamente'}, {akk:'das Ersatzteil',pro:'es',n:'Ersatzteil'},
+  {akk:'die Ausrüstung',pro:'sie',n:'Ausrüstung'}, {akk:'die Blutkonserven',pro:'sie',n:'Blutkonserven'},
+  {akk:'das Funkgerät',pro:'es',n:'Funkgerät'}
+];
+/* Schalter und Anzeigen wie im MFD Trainer. Reihenfolge so, dass die
+   Auswahl in zwei Spalten wie die linke und rechte Schalterleiste aussieht. */
+const FK_SCHALTER=['ALARM','CLOCK','NAV','COMP','COMM','MAP','INSTRU','INFO 1','THREAT','INFO 2'];
+const FK_INSTR=['TRANSMISSION OIL PRESSURE','ENGINE OIL PRESSURE','FUEL FLOW','TRANSMISSION OIL TEMPERATURE',
+  'ENGINE OIL TEMPERATURE','FUEL QUANTITY','HYDRAULIC PRESSURE','EXHAUST TEMPERATURE','VOLTAGE'];
+const FK_INFO=['ALPHA','BRAVO','CHARLIE','DELTA','ECHO','FOXTROT','GOLF','HOTEL'];
+/* Englische Anzeigenamen so schreiben, dass die Stimme sie als Wörter liest */
+const fkSprech=s=>String(s).split(' ').map(w=>/^\d+$/.test(w)?w:w.charAt(0)+w.slice(1).toLowerCase()).join(' ');
+const fkFrqSprech=f=>{ const t=f.toFixed(3).replace(/0+$/,'').replace(/\.$/,''); const [a,b]=t.split('.');
+  return zifferWeise(a)+(b?' Komma '+zifferWeise(b):''); };
+const fkMisch=a=>shuffle(a);
+const fkWahl=(richtig,pool,n)=>shuffle([richtig].concat(shuffle(pool.filter(x=>x!==richtig)).slice(0,n-1)));
+
+/* Jeder Baustein liefert gesprochenen Text, angezeigten Text und Fragen.
+   Fragearten: zahl (Eingabe), kurs (Eingabe, 360 Grad), frq (Eingabe mit
+   Komma), wahl (Auswahl). */
+const FK_BAUSTEINE={
+  auftrag:()=>{
+    const fracht=Math.random()<.4, o=fracht?pick(FK_FRACHT):pick(FK_PERSONEN);
+    const p1=pick(RVP), p2=pick(RVP.filter(x=>x!==p1));
+    const t=`Nehmen Sie ${o.akk} am Punkt ${p1} auf und bringen Sie ${o.pro} zum Punkt ${p2}.`;
+    return { kat:'Auftrag', say:t, show:t, fragen:[
+      {kat:'Auftrag', text:fracht?'Was soll transportiert werden?':'Wer soll aufgenommen werden?', art:'wahl',
+        soll:o.n, optionen:fkWahl(o.n,(fracht?FK_FRACHT:FK_PERSONEN).map(x=>x.n),4)},
+      {kat:'Punkte', text:'Aufnahme am Punkt', art:'zahl', soll:p1},
+      {kat:'Punkte', text:'Ziel ist Punkt', art:'zahl', soll:p2} ]};
+  },
+  wind:()=>{
+    const d=rnd(1,36)*10, v=rnd(3,28);
+    return { kat:'Wind', say:`Wind ${zifferWeise(pad3(d))} Grad, ${v} Knoten.`, show:`Wind ${pad3(d)} Grad, ${v} Knoten.`, fragen:[
+      {kat:'Wind', text:'Windrichtung', art:'kurs', soll:d, einheit:'Grad'},
+      {kat:'Wind', text:'Windstärke', art:'zahl', soll:v, einheit:'kt'} ]};
+  },
+  hoehe:()=>{
+    if(Math.random()<.4){
+      const u=rnd(5,25)*100, o=u+rnd(5,15)*100;
+      const t=`Halten Sie ein Höhenband zwischen ${u} und ${o} Fuß.`;
+      return { kat:'Höhe', say:t, show:t, fragen:[
+        {kat:'Höhe', text:'Untergrenze des Höhenbands', art:'zahl', soll:u, einheit:'ft'},
+        {kat:'Höhe', text:'Obergrenze des Höhenbands', art:'zahl', soll:o, einheit:'ft'} ]};
+    }
+    const h=rnd(5,45)*100, t=`Steigen Sie auf ${h} Fuß.`;
+    return { kat:'Höhe', say:t, show:t, fragen:[{kat:'Höhe', text:'Flughöhe', art:'zahl', soll:h, einheit:'ft'}]};
+  },
+  speed:()=>{
+    const v=rnd(6,15)*10, t=`Maximale Geschwindigkeit ${v} Knoten.`;
+    return { kat:'Geschwindigkeit', say:t, show:t, fragen:[{kat:'Geschwindigkeit', text:'Maximale Geschwindigkeit', art:'zahl', soll:v, einheit:'kt'}]};
+  },
+  kurs:()=>{
+    const k=rnd(1,36)*10;
+    return { kat:'Kurs', say:`Steuern Sie Kurs ${zifferWeise(pad3(k))}.`, show:`Steuern Sie Kurs ${pad3(k)}.`,
+      fragen:[{kat:'Kurs', text:'Kurs', art:'kurs', soll:k, einheit:'Grad'}]};
+  },
+  frequenz:()=>{
+    const f=Math.round((118+rnd(0,17)+rnd(0,39)*.025)*1000)/1000;
+    return { kat:'Frequenz', say:`Wechseln Sie auf Frequenz ${fkFrqSprech(f)}.`, show:`Wechseln Sie auf Frequenz ${f.toFixed(3)}.`,
+      fragen:[{kat:'Frequenz', text:'Neue Frequenz', art:'frq', soll:f, einheit:'MHz'}]};
+  },
+  squawk:()=>{
+    const c=[0,0,0,0].map(()=>rnd(0,7)).join('');
+    return { kat:'Transponder', say:`Transponder ${zifferWeise(c)}.`, show:`Transponder ${c}.`,
+      fragen:[{kat:'Transponder', text:'Transpondercode', art:'code', soll:c}]};
+  },
+  qnh:()=>{
+    const q=rnd(990,1035);
+    return { kat:'Luftdruck', say:`Q N H ${zifferWeise(q)}.`, show:`QNH ${q}.`,
+      fragen:[{kat:'Luftdruck', text:'QNH', art:'zahl', soll:q, einheit:'hPa'}]};
+  },
+  zeit:()=>{
+    const m=rnd(3,25), t=`Melden Sie sich in ${m} Minuten zurück.`;
+    return { kat:'Zeit', say:t, show:t, fragen:[{kat:'Zeit', text:'Rückmeldung in wie vielen Minuten?', art:'zahl', soll:m, einheit:'min'}]};
+  },
+  menue:()=>{
+    const seite=Math.random()<.5?'links':'rechts', seiteAdj=seite==='links'?'linken':'rechten';
+    const typ=pick(['instru','instru','info','map','clock','nav']);
+    const fSeite={kat:'Menüpfad', text:'Auf welchem MFD?', art:'wahl', soll:seite, optionen:['links','rechts']};
+    const fSchalter=s=>({kat:'Menüpfad', text:'Welcher Schalter?', art:'wahl', soll:s, optionen:FK_SCHALTER, raster:true});
+    if(typ==='instru'){
+      const a=pick(FK_INSTR);
+      return { kat:'Menüpfad',
+        say:`Rufen Sie auf dem ${seiteAdj} M F D über den Schalter Instru die Anzeige ${fkSprech(a)} auf.`,
+        show:`Rufen Sie auf dem ${seiteAdj} MFD über den Schalter INSTRU die Anzeige ${a} auf.`,
+        fragen:[fSeite, fSchalter('INSTRU'),
+          {kat:'Menüpfad', text:'Welche Anzeige?', art:'wahl', soll:a, optionen:fkWahl(a,FK_INSTR,5), stapel:true}] };
+    }
+    if(typ==='info'){
+      const k=pick(FK_INFO);
+      return { kat:'Menüpfad',
+        say:`Lesen Sie auf dem ${seiteAdj} M F D unter Info eins die Information ${fkSprech(k)} nach.`,
+        show:`Lesen Sie auf dem ${seiteAdj} MFD unter INFO 1 die Information ${k} nach.`,
+        fragen:[fSeite, fSchalter('INFO 1'),
+          {kat:'Menüpfad', text:'Welche Information?', art:'wahl', soll:k, optionen:fkWahl(k,FK_INFO,4)}] };
+    }
+    if(typ==='map'){
+      const m=pick(['HEADING UP','NORTH UP']);
+      return { kat:'Menüpfad',
+        say:`Öffnen Sie auf dem ${seiteAdj} M F D die Karte und schalten Sie auf ${fkSprech(m)}.`,
+        show:`Öffnen Sie auf dem ${seiteAdj} MFD die Karte (MAP) und schalten Sie auf ${m}.`,
+        fragen:[fSeite, fSchalter('MAP'),
+          {kat:'Menüpfad', text:'Welche Ausrichtung?', art:'wahl', soll:m, optionen:['HEADING UP','NORTH UP']}] };
+    }
+    if(typ==='clock'){
+      return { kat:'Menüpfad',
+        say:`Starten Sie auf dem ${seiteAdj} M F D unter Clock die Stoppuhr.`,
+        show:`Starten Sie auf dem ${seiteAdj} MFD unter CLOCK die Stoppuhr.`,
+        fragen:[fSeite, fSchalter('CLOCK')] };
+    }
+    const z=rnd(1,36)*10;
+    return { kat:'Menüpfad',
+      say:`Stellen Sie auf dem ${seiteAdj} M F D unter Nav die Zielnadel auf ${zifferWeise(pad3(z))}.`,
+      show:`Stellen Sie auf dem ${seiteAdj} MFD unter NAV die Zielnadel auf ${pad3(z)}.`,
+      fragen:[fSeite, fSchalter('NAV'), {kat:'Menüpfad', text:'Zielnadel auf', art:'kurs', soll:z, einheit:'Grad'}] };
+  },
+  kennung:()=>{
+    const k=pick(FK_INFO);
+    return { kat:'Kennung', say:`Der Auftrag läuft unter Kennung ${fkSprech(k)}.`, show:`Der Auftrag läuft unter Kennung ${k}.`,
+      fragen:[{kat:'Kennung', text:'Kennung des Auftrags', art:'wahl', soll:k, optionen:fkWahl(k,FK_INFO,4)}]};
+  }
+};
+/* Anzahl der Bausteine je Spruch nach Stufe */
+const FK_STUFE={
+  leicht:{bausteine:3, info:'Drei Inhalte je Spruch, Abfrage in gesprochener Reihenfolge.'},
+  mittel:{bausteine:5, info:'Fünf Inhalte je Spruch, Abfrage in gesprochener Reihenfolge.'},
+  schwer:{bausteine:7, info:'Sieben Inhalte je Spruch, abgefragt in gemischter Reihenfolge der Inhalte, dazu das Rufzeichen.'}
+};
+function fkSpruchBauen(stufe){
+  const anz=FK_STUFE[stufe].bausteine;
+  const rest=shuffle(Object.keys(FK_BAUSTEINE).filter(k=>k!=='auftrag'));
+  const keys=['auftrag'].concat(rest.slice(0,anz-1));
+  const teile=keys.map(k=>FK_BAUSTEINE[k]());
+  const ruf=pick(FK_RUF), nr=rnd(10,49);
+  const kopfSay=`${ruf} ${zifferWeise(nr)}, hier Leitstelle.`, kopfShow=`${ruf} ${nr}, hier Leitstelle.`;
+  // Fragen eines Inhalts bleiben zusammen. Auf SCHWER wird nur die
+  // Reihenfolge der Inhalte gemischt, nicht die Fragen innerhalb.
+  let fragen=[].concat(...(stufe==='schwer'?shuffle(teile):teile).map(t=>t.fragen));
+  if(stufe==='schwer'){
+    fragen=[{kat:'Rufzeichen', text:'Wie lautete Ihr Rufzeichen? Nur die Nummer.', art:'zahl', soll:nr}].concat(fragen);
+  }
+  return { say:[kopfSay].concat(teile.map(t=>t.say)).concat(['Ende.']).join(' '),
+           show:[kopfShow].concat(teile.map(t=>t.show)).join(' '),
+           fragen };
+}
+/* Eingaben tolerant prüfen: Kurs 90 und 090 gleich, Frequenz mit Punkt,
+   Komma oder ganz ohne Trennzeichen */
+function fkPruefe(f,roh){
+  const s=String(roh||'').trim();
+  if(f.art==='wahl') return s===f.soll;
+  if(s==='') return false;
+  if(f.art==='code') return s.replace(/\D/g,'')===f.soll;
+  if(f.art==='frq'){
+    let n=parseFloat(s.replace(',','.'));
+    if(isNaN(n)) return false;
+    if(!/[.,]/.test(s) && n>=1000){ const d=s.replace(/\D/g,''); n=parseFloat(d.slice(0,3)+'.'+d.slice(3)); }
+    return Math.abs(n-f.soll)<0.0005;
+  }
+  const n=parseInt(s.replace(/\D/g,''),10);
+  if(isNaN(n)) return false;
+  if(f.art==='kurs') return norm(n)===norm(f.soll);
+  return n===f.soll;
+}
+function fkSollText(f){
+  if(f.art==='kurs') return pad3(f.soll)+' Grad';
+  if(f.art==='frq') return f.soll.toFixed(3)+' MHz';
+  return f.soll+(f.einheit&&f.art!=='wahl'?' '+f.einheit:'');
+}
+
+function renderFunkMenu(){
+  clearTimers(); nebenStop(); sprichStop(); keyMode=null; contFn=null; S=null;
+  slot.classList.add('hidden'); menuBtn.classList.add('hidden'); prog.style.width='0%';
+  view.innerHTML=`
+    <div class="eyebrow">GESPROCHENES MERKEN</div>
+    <h1>Funksprüche</h1>
+    <p class="sub" style="margin-top:8px">Ein Funkspruch der Leitstelle wird einmal vorgelesen. Er enthält Auftrag, Punkte und weitere Angaben wie Wind, Höhe, Frequenz oder einen Menüpfad am MFD. Direkt danach wird alles abgefragt.</p>
+    <div class="card">
+      <div class="opt">Stufe</div>
+      <div class="row" id="fSt">${['leicht','mittel','schwer'].map(v=>`<button class="chip ${FUNK.stufe===v?'on':''}" data-v="${v}">${v.toUpperCase()}</button>`).join('')}</div>
+      <p class="sub" style="margin-top:8px;font-size:12px" id="fStInfo"></p>
+      <div class="opt" style="margin-top:16px">Sprüche pro Lauf</div>
+      <div class="row" id="fAn">${[5,8,12].map(n=>`<button class="chip ${FUNK.anzahl===n?'on':''}" data-v="${n}">${n}</button>`).join('')}</div>
+      <div class="opt" style="margin-top:16px">Einmal wiederholen erlaubt</div>
+      <div class="row" id="fWi">
+        <button class="chip ${FUNK.wiederholen?'on':''}" data-v="1">AN</button>
+        <button class="chip ${FUNK.wiederholen?'':'on'}" data-v="0">AUS</button>
+      </div>
+      <p class="sub" style="margin-top:8px;font-size:12px">Wie in der Prüfung wird ein Spruch normalerweise nur einmal gesendet.</p>
+      <div class="opt" style="margin-top:16px">Stimme</div>
+      <select id="fVoice" class="vsel">${stimmenOptionen()}</select>
+      <div class="row" style="margin-top:8px">
+        <button class="chip" id="fProbe">PROBEHÖREN</button>
+        <button class="chip" id="fTempo">${(CFG.sprechtempo||0.92)<=0.8?'NORMAL SPRECHEN':'LANGSAMER SPRECHEN'}</button>
+      </div>
+      <p class="sub" id="fAnnaHinweis" style="margin-top:8px;font-size:12px;${annaDa()?'display:none':''}">Anna ist auf diesem Gerät nicht installiert. Auf dem iPhone: Einstellungen, Bedienungshilfen, Gesprochene Inhalte, Stimmen, Deutsch, Anna. Am besten die Variante Erweitert oder Premium laden. Danach die App neu öffnen, Anna steht dann oben in der Liste.</p>
+    </div>
+    <button class="btn" id="fGo">LAUF STARTEN</button>
+    <button class="btn ghost" id="fZurueck">ZURÜCK ZUM HAUPTMENÜ</button>`;
+  const setInfo=()=>document.getElementById('fStInfo').textContent=FK_STUFE[FUNK.stufe].info;
+  setInfo();
+  const bind=(id,fn)=>document.getElementById(id).addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(b) fn(b); });
+  bind('fSt',b=>{FUNK.stufe=b.dataset.v;markOne('fSt',b);setInfo();});
+  bind('fAn',b=>{FUNK.anzahl=+b.dataset.v;markOne('fAn',b);});
+  bind('fWi',b=>{FUNK.wiederholen=b.dataset.v==='1';markOne('fWi',b);});
+  const fv=document.getElementById('fVoice');
+  fv.addEventListener('change',()=>{ stimmeWaehlen(fv.value); spracheFreischalten();
+    sprich('Adler eins vier, hier Leitstelle. Wind zwei sieben null Grad, zwölf Knoten.'); });
+  document.getElementById('fProbe').addEventListener('click',()=>{ spracheFreischalten();
+    sprich('Adler eins vier, hier Leitstelle. Nehmen Sie den Arzt am Punkt 12 auf und bringen Sie ihn zum Punkt 23.'); });
+  const ft=document.getElementById('fTempo');
+  ft.addEventListener('click',()=>{ CFG.sprechtempo=(CFG.sprechtempo||0.92)<=0.8?0.92:0.75;
+    ft.textContent=CFG.sprechtempo<=0.8?'NORMAL SPRECHEN':'LANGSAMER SPRECHEN';
+    spracheFreischalten(); sprich('Steuern Sie Kurs null neun null.'); });
+  document.getElementById('fGo').addEventListener('click',startFunkSession);
+  document.getElementById('fZurueck').addEventListener('click',renderMenu);
+}
+function startFunkSession(){
+  spracheFreischalten();
+  S={funk:true, nr:0, fr:{ok:0,n:0}, spr:{ok:0,n:0}, kat:{}, t0:Date.now()};
+  menuBtn.classList.remove('hidden');
+  funkNaechster();
+}
+function funkNaechster(){
+  if(!S) return;
+  S.nr++;
+  if(S.nr>FUNK.anzahl) return renderFunkResults();
+  prog.style.width=Math.round((S.nr-1)/FUNK.anzahl*100)+'%';
+  const sp=fkSpruchBauen(FUNK.stufe);
+  vorladen(sp.say);
+  funkHoeren(sp);
+}
+function funkHoeren(sp){
+  clearTimers(); keyMode=null; slot.classList.add('hidden');
+  let gespielt=0, laeuft=false;
+  const ohneStimme=!('speechSynthesis' in window) && CFG.stimmquelle!=='online';
+  const zeige=()=>{
+    view.innerHTML=`
+      <div class="card">
+        <div class="qhead"><span class="tag">FUNKSPRUCH</span><span class="tclock mono">${S.nr}/${FUNK.anzahl}</span></div>
+        <h2>Hör gut zu.</h2>
+        <p class="sub">Danach wird alles abgefragt, ohne den Text noch einmal zu sehen.</p>
+        <div class="hoerbox"><div class="hoerwelle ${laeuft?'an':''}" id="welle">${laeuft?'● ● ●':'◦ ◦ ◦'}</div></div>
+        ${ohneStimme?`<div class="fb no" id="fkText">Keine Sprachausgabe verfügbar. Lies den Spruch: <b>${sp.show}</b></div>`:''}
+        ${FUNK.wiederholen&&gespielt===1&&!laeuft?`<button class="btn ghost" id="fkNochmal">EINMAL WIEDERHOLEN</button>`:''}
+        <button class="btn" id="fkAbfrage">${laeuft?'ZUR ABFRAGE':'ZUR ABFRAGE'}</button>
+      </div>`;
+    const n=document.getElementById('fkNochmal');
+    if(n) n.addEventListener('click',spiele);
+    document.getElementById('fkAbfrage').addEventListener('click',()=>{ sprichStop(); funkAbfrage(sp); });
+  };
+  const spiele=()=>{
+    gespielt++; laeuft=true; zeige();
+    sprich(sp.say, ()=>{ if(!S||!document.getElementById('welle')) return; laeuft=false; zeige(); });
+  };
+  zeige();
+  if(!ohneStimme) setTimeout(()=>{ if(S && document.getElementById('welle')) spiele(); },400);
+}
+function funkAbfrage(sp){
+  clearTimers(); keyMode='eingabe'; slot.classList.add('hidden'); beep(760,120);
+  const fragen=sp.fragen;
+  const feld=(f,i)=>{
+    if(f.art==='wahl'){
+      const kl=f.stapel?'row stack':(f.raster||f.optionen.length>2)?'grid2':'row';
+      return `<div class="${kl}" data-fq="${i}">${f.optionen.map(o=>`<button class="chip" data-v="${o}">${o}</button>`).join('')}</div>`;
+    }
+    const im=f.art==='frq'?'decimal':'numeric';
+    return `<div class="fkein"><input id="fq_${i}" type="text" inputmode="${im}" autocomplete="off" placeholder="?">${f.einheit?`<span>${f.einheit}</span>`:''}</div>`;
+  };
+  view.innerHTML=`
+    <div class="card">
+      <div class="qhead"><span class="tag">ABFRAGE</span><span class="tclock mono">${S.nr}/${FUNK.anzahl}</span></div>
+      <h2>Was enthielt der Funkspruch?</h2>
+      ${fragen.map((f,i)=>`<div class="fkfrage"><div class="fklbl">${f.text}</div>${feld(f,i)}</div>`).join('')}
+      <button class="btn" id="fkOk">BESTÄTIGEN</button>
+    </div>
+    <div id="fbHost"></div>`;
+  const wahl={};
+  view.querySelectorAll('[data-fq]').forEach(g=>g.addEventListener('click',e=>{
+    const b=e.target.closest('.chip'); if(!b||b.disabled) return;
+    wahl[g.dataset.fq]=b.dataset.v;
+    g.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===b));
+  }));
+  const erstes=view.querySelector('.fkein input');
+  if(erstes) setTimeout(()=>{ if(S) erstes.focus(); },60);
+  let fertig=false;
+  const send=()=>{
+    if(fertig) return; fertig=true;
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    keyMode=null;
+    let ok=0;
+    const zeilen=fragen.map((f,i)=>{
+      const roh=f.art==='wahl'?(wahl[i]||''):(document.getElementById('fq_'+i).value||'');
+      const r=fkPruefe(f,roh);
+      if(r) ok++;
+      S.fr.n++; if(r) S.fr.ok++;
+      const k=S.kat[f.kat]||(S.kat[f.kat]={ok:0,n:0}); k.n++; if(r) k.ok++;
+      if(f.art==='wahl'){
+        view.querySelectorAll(`[data-fq="${i}"] .chip`).forEach(c=>{
+          c.disabled=true;
+          if(c.dataset.v===f.soll) c.classList.add('richtig');
+          else if(c.dataset.v===roh) c.classList.add('falsch');
+        });
+      } else {
+        const el=document.getElementById('fq_'+i); el.disabled=true; el.classList.add(r?'gut':'schlecht');
+      }
+      return `<li><b>${f.text}</b>  ${fkSollText(f)}${r?', richtig':', angegeben '+(String(roh).trim()||'nichts')}</li>`;
+    });
+    const alles=ok===fragen.length;
+    S.spr.n++; if(alles) S.spr.ok++;
+    beep(alles?1050:240, alles?90:180);
+    document.getElementById('fkOk').disabled=true;
+    document.getElementById('fbHost').innerHTML=`
+      <div class="fb ${alles?'ok':'no'}">
+        <div class="verdict">${alles?'ALLES BEHALTEN':ok+' VON '+fragen.length+' RICHTIG'}</div>
+        <ul class="weg">${zeilen.join('')}</ul>
+        <p class="tip" style="margin-top:10px"><b>Gesendet wurde:</b> ${sp.show}</p>
+      </div>
+      <button class="btn" id="weiter">WEITER</button>`;
+    warteAufWeiter(funkNaechster);
+  };
+  document.getElementById('fkOk').addEventListener('click',send);
+  view.querySelectorAll('.fkein input').forEach(inp=>inp.addEventListener('keydown',e=>{
+    if(e.key!=='Enter') return;
+    const alle=[...view.querySelectorAll('.fkein input')], j=alle.indexOf(inp);
+    if(j<alle.length-1) alle[j+1].focus(); else send();
+  }));
+}
+function renderFunkResults(){
+  clearTimers(); sprichStop(); keyMode=null; contFn=null;
+  slot.classList.add('hidden'); menuBtn.classList.add('hidden'); prog.style.width='100%';
+  const pc=o=>o.n?Math.round(o.ok/o.n*100):0;
+  const kats=Object.keys(S.kat).sort((a,b)=>pc(S.kat[a])-pc(S.kat[b]));
+  const schwach=kats.filter(k=>S.kat[k].n>=2 && pc(S.kat[k])<70);
+  const dauer=Math.max(1,Math.round((Date.now()-S.t0)/60000));
+  view.innerHTML=`
+    <div class="eyebrow">AUSWERTUNG</div>
+    <h1>Funksprüche beendet</h1>
+    <div class="card" style="text-align:center">
+      <div class="num mono" style="font-size:64px;font-weight:700;color:var(--amber);line-height:1">${pc(S.fr)}%</div>
+      <div class="lbl" style="font-size:11px;letter-spacing:3px;color:var(--dim);margin-top:4px">INHALTE RICHTIG BEHALTEN</div>
+    </div>
+    <div class="card">
+      <div class="opt">Nach Inhalt, schwächste zuerst</div>
+      ${kats.map(k=>`<div class="stat"><span class="k">${k}</span><span class="v" style="color:${pc(S.kat[k])>=80?'var(--green)':pc(S.kat[k])>=60?'var(--amber)':'var(--red)'}">${S.kat[k].ok}/${S.kat[k].n} · ${pc(S.kat[k])}%</span></div>`).join('')}
+      <div class="stat"><span class="k">Sprüche komplett richtig</span><span class="v">${S.spr.ok}/${S.spr.n}</span></div>
+      <div class="stat"><span class="k">Stufe und Dauer</span><span class="v">${FUNK.stufe.toUpperCase()} · ${dauer} min</span></div>
+      ${schwach.length?`<p class="sub" style="margin-top:10px;font-size:13px">Am meisten verloren ging bei: ${schwach.join(', ')}. Beim nächsten Spruch genau diese Inhalte gedanklich wiederholen, sobald sie fallen.</p>`:''}
+    </div>
+    <button class="btn" id="again">NEUER LAUF</button>
+    <button class="btn ghost" id="home">HAUPTMENÜ</button>`;
+  document.getElementById('again').addEventListener('click',startFunkSession);
   document.getElementById('home').addEventListener('click',renderMenu);
 }
 
