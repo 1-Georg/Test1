@@ -2090,11 +2090,24 @@ function sprichGeraet(text, fertig){
     if(STIMME) u.voice=STIMME;
     u.lang=(STIMME&&STIMME.lang)||'de-DE';
     u.rate=CFG.sprechtempo||0.92; u.pitch=1;
-    if(fertig) u.onend=fertig;
+    // iOS meldet das Ende einer Ansage nicht immer. Ohne Rueckmeldung bliebe
+    // die App haengen, deshalb geht es spaetestens nach der geschaetzten
+    // Sprechdauer weiter. Wurde die Ansage abgebrochen, passiert nichts.
+    const lauf=sprechLauf;
+    let fertigGemeldet=false;
+    const ende=()=>{
+      clearTimeout(wache);
+      if(fertigGemeldet || lauf!==sprechLauf) return;
+      fertigGemeldet=true; if(fertig) fertig();
+    };
+    const wache=setTimeout(ende, 2500+String(text).length*110/(u.rate||1));
+    u.onend=ende; u.onerror=ende;
     window.speechSynthesis.speak(u);
   }catch(e){ if(fertig) fertig(); }
 }
+let sprechLauf=0;
 function sprichStop(){
+  sprechLauf++;
   try{ window.speechSynthesis.cancel(); }catch(e){}
   if(aktivesAudio){ try{ aktivesAudio.pause(); }catch(e){} aktivesAudio=null; }
 }
@@ -2108,10 +2121,14 @@ function sprich(text, fertig){
     a.playbackRate=CFG.sprechtempo||0.92;
     aktivesAudio=a;
     a.onerror=zurueck;
-    a.onended=()=>{ erledigt=true; aktivesAudio=null; if(fertig) fertig(); };
+    const lauf=sprechLauf;
+    a.onended=()=>{ if(erledigt) return; erledigt=true; aktivesAudio=null; if(fertig && lauf===sprechLauf) fertig(); };
     // Kommt binnen fünf Sekunden nichts, wird die Geraetestimme genommen
     const wache=setTimeout(()=>{ if(!erledigt && a.readyState<2) zurueck(); },5000);
     a.oncanplay=()=>clearTimeout(wache);
+    // Bleibt die Wiedergabe unterwegs stecken, geht es trotzdem weiter
+    setTimeout(()=>{ if(!erledigt && lauf===sprechLauf){ erledigt=true; aktivesAudio=null; if(fertig) fertig(); } },
+      8000+String(text).length*140);
     const pr=a.play();
     if(pr&&pr.catch) pr.catch(zurueck);
   }catch(e){ zurueck(); }
@@ -2144,6 +2161,10 @@ function hoerZwischenfrage(next){
   const nachFarbe = S.farbe && CFG.merk.farbe && (!S.letter || Math.random()<0.5);
   const frage = nachFarbe ? 'Welche Farbe gilt gerade?' : 'Welcher Buchstabe gilt gerade?';
   const soll = nachFarbe ? S.farbe.n : S.letter;
+  // Sofort umschalten, damit der Tipp auf WEITER sichtbar etwas bewirkt,
+  // auch solange die Frage noch gesprochen wird
+  clearTimers(); keyMode=null; slot.classList.add('hidden');
+  view.innerHTML=`<div class="card"><div class="eyebrow">ZWISCHENFRAGE, GEHÖRT</div><h2>Hör zu …</h2></div>`;
   sprich(frage, ()=>{
     clearTimers(); keyMode='recall'; slot.classList.add('hidden');
     view.innerHTML = nachFarbe
